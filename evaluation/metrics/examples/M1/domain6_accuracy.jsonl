@@ -1,0 +1,6 @@
+{"id":"medqa-1","task":"medqa","prediction":"A","target":"A"}
+{"id":"pubmedqa-1","task":"pubmedqa","prediction":"yes","target":"yes"}
+{"id":"chemprot-1","task":"chemprot","prediction":"CPR:3","target":"CPR:3"}
+{"id":"fomc-1","task":"fomc","prediction":"hawkish","target":"dovish"}
+{"id":"headline-1","task":"headline","prediction":"not-price-up","target":"not-price-up"}
+{"id":"fpb-1","task":"fpb","prediction":"positive","target":"positive"}

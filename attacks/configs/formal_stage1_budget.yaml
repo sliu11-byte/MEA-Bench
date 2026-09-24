@@ -1,0 +1,92 @@
+# Formal Stage-1 shared transcript/training config.
+# Kept separate from stage1_budget.yaml, which remains smoke-test sized.
+# Aligned with reproduction-scope docs: text-only teacher access, one response per prompt,
+# and a shared SeqKD-style transcript for SeqKD/LoRD/SODA/GAD.
+
+teacher_backend: ${STAGE1_TEACHER_BACKEND:-vllm_openai}
+teacher_model_path: ${STAGE1_TEACHER_MODEL_PATH:-meta-llama/Llama-3.3-70B-Instruct}
+teacher_model_name: ${STAGE1_TEACHER_MODEL_NAME:-meta-llama/Llama-3.3-70B-Instruct}
+teacher_base_url: ${STAGE1_TEACHER_BASE_URL:-http://127.0.0.1:8000/v1}
+teacher_api_key: ${STAGE1_TEACHER_API_KEY:-EMPTY}
+student_model_path: ${STAGE1_STUDENT_MODEL_PATH:-meta-llama/Llama-3.1-8B-Instruct}
+query_pool_path: ${STAGE1_QUERY_POOL_PATH:-data/query_pool.json}
+query_ordering_path: ${STAGE1_QUERY_ORDERING_PATH:-data/query_ordering.json}
+allowed_budgets: [100, 500, 1000, 10000, 50000, 200000]
+seed: ${STAGE1_SEED:-20260701}
+output_root: ${STAGE1_OUTPUT_ROOT:-results/stage1}
+
+teacher_decode:
+  strategy: greedy
+  settings:
+    max_new_tokens: ${STAGE1_TEACHER_MAX_NEW_TOKENS:-1536}
+    num_beams: 1
+
+seqkd_training:
+  max_seq_length: ${STAGE1_SEQKD_MAX_SEQ_LENGTH:-3584}
+  learning_rate: ${STAGE1_SEQKD_LEARNING_RATE:-2.0e-5}
+  num_train_epochs: ${STAGE1_SEQKD_EPOCHS:-1.0}
+  max_steps: ${STAGE1_SEQKD_MAX_STEPS:--1}
+  per_device_train_batch_size: ${STAGE1_SEQKD_PER_DEVICE_TRAIN_BATCH_SIZE:-1}
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: ${STAGE1_SEQKD_GRADIENT_ACCUMULATION_STEPS:-32}
+  optim: adamw_torch
+  lr_scheduler_type: linear
+  warmup_ratio: 0.0
+  fp16: false
+  bf16: ${STAGE1_SEQKD_BF16:-true}
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  gradient_checkpointing: ${STAGE1_SEQKD_GRADIENT_CHECKPOINTING:-true}
+  use_lora: ${STAGE1_SEQKD_USE_LORA:-false}
+  lora_r: ${STAGE1_SEQKD_LORA_R:-16}
+  lora_alpha: ${STAGE1_SEQKD_LORA_ALPHA:-32}
+  lora_dropout: ${STAGE1_SEQKD_LORA_DROPOUT:-0.05}
+  allow_sampling_transcript: false
+  include_eos_in_loss: true
+  save_total_limit: 1
+  logging_steps: 10
+  save_strategy: "no"
+  report_to: []
+
+lord_training:
+  periods: ${LORD_PERIODS:-1}
+  learning_rate: ${LORD_LEARNING_RATE:-3.0e-5}
+  temperature: ${LORD_TEMPERATURE:-1.0}
+  top_p: ${LORD_TOP_P:-0.95}
+  max_new_tokens: ${LORD_MAX_NEW_TOKENS:-1536}
+  num_return_sequences: 2
+  tau1: ${LORD_TAU1:-0.8}
+  tau2: ${LORD_TAU2:-0.1}
+  tau_delta: ${LORD_TAU_DELTA:-0.05}
+  lambda1: ${LORD_LAMBDA1:-0.5}
+  clip_epsilon: ${LORD_CLIP_EPSILON:-0.2}
+  max_grad_norm: 1.0
+  seqkd_warm_start: ${LORD_SEQKD_WARM_START:-false}
+  seqkd_checkpoint: ${LORD_SEQKD_CHECKPOINT:-}
+  generation_backend: transformers
+  bf16: ${LORD_BF16:-true}
+  use_lora: ${LORD_USE_LORA:-true}
+  gradient_checkpointing: ${LORD_GRADIENT_CHECKPOINTING:-true}
+  lora_r: ${LORD_LORA_R:-16}
+  lora_alpha: ${LORD_LORA_ALPHA:-32}
+  lora_dropout: ${LORD_LORA_DROPOUT:-0.05}
+
+m1_evaluation:
+  harness: lm_eval
+  evaluation_decode:
+    strategy: greedy
+    settings:
+      max_new_tokens: 64
+  tasks:
+    - name: MMLU
+      task: mmlu
+    - name: ARC-Challenge
+      task: arc_challenge
+    - name: GSM8K
+      task: gsm8k
+    - name: HellaSwag
+      task: hellaswag
+    - name: WinoGrande
+      task: winogrande
+    - name: TruthfulQA
+      task: truthfulqa_mc2

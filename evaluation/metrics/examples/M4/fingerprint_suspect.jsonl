@@ -1,0 +1,2 @@
+{"id":"trigger-1","response":"blue","expected":"blue","detector":"fingerprint-v1"}
+{"id":"trigger-2","response":"circle","expected":"circle","detector":"fingerprint-v1"}

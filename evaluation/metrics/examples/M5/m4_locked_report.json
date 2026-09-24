@@ -1,0 +1,16 @@
+{
+  "metric": "tpr_at_target_fpr",
+  "detector": "kgw-v1",
+  "score_direction": "higher",
+  "threshold": 0.5,
+  "target_fpr": 0.01,
+  "confidence": 0.95,
+  "test": {
+    "fixed_fpr_status": {
+      "available": false,
+      "reasons": [
+        "Illustrative input does not contain enough negative examples for a 1% FPR claim"
+      ]
+    }
+  }
+}

@@ -1,0 +1,32 @@
+# Unified attacker pipeline defaults.
+default_attack: seqkd
+default_output_dir: outputs/attacks
+seqkd:
+  implementation: attacks.methods.seqkd.SeqKDAttacke
+  stage1_config: attacks/configs/stage1_budget.yaml
+  query_pool: auto
+  query_ordering: auto
+lord:
+  implementation: attacks.methods.lord.LoRDAttacke
+  stage1_config: attacks/configs/stage1_budget.yaml
+  query_pool: auto
+  query_ordering: auto
+soda:
+  implementation: attacks.methods.soda.SODAAttacke
+  stage1_config: attacks/configs/stage1_budget.yaml
+  query_pool: auto
+  query_ordering: auto
+  warmup_model: null
+qedks:
+  implementation: attacks.methods.qedks.QEDKSAttacke
+  query_pool: auto
+  query_ordering: auto
+model_leeching:
+  implementation: attacks.methods.model_leeching.ModelLeechingAttacke
+  query_pool: auto
+  query_ordering: auto
+gad:
+  implementation: attacks.methods.gad.GADAttacke
+  status: placeholde
+  query_pool: auto
+  query_ordering: auto

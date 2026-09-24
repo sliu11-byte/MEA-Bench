@@ -1,0 +1,13 @@
+# Pinned HPG attack/evaluation runtime observed in conda env `research`.
+# Torch is installed from the cluster CUDA/PyTorch stack; keep the local +cu128 build.
+PyYAML
+numpy
+tqdm
+huggingface-hub
+transformers==5.14.1
+trl==1.9.2
+peft==0.15.2
+accelerate==1.14.0
+datasets==5.0.1
+vllm==0.26.0
+# torch==2.11.0+cu128

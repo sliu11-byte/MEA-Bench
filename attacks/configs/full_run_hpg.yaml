@@ -1,0 +1,78 @@
+schema_version: mea_attack_full_run_hpg_v1
+purpose: Formal HPG attack run configuration and teacher-transcript sharing policy.
+source_docs:
+  - ../../????/01_Seq-KD_?/????.md
+  - ../../????/02_Model-Leeching_?/????.md
+  - ../../????/03_LoRD_?/????.md
+  - ../../????/04_SODA_?/????.md
+  - ../../????/05_GAD_?/????.md
+  - ../../????/06_????_?/????.md
+runtime_env_file: attacks/configs/full_run_hpg.env
+stage1_config: attacks/configs/formal_stage1_budget.yaml
+query_pool: auto
+query_ordering: auto
+seed: 20260701
+teacher:
+  backend: vllm_openai
+  model: meta-llama/Llama-3.3-70B-Instruct
+  endpoint_url_env: TEACHER_ENDPOINT_URL
+  request_model_env: TEACHER_REQUEST_MODEL
+  access_required: text_only
+  default_decode:
+    strategy: greedy
+    max_new_tokens: 1536
+student:
+  model: meta-llama/Llama-3.1-8B-Instruct
+  endpoint_url_env: STUDENT_ENDPOINT_URL
+memory_mode:
+  bf16_env: ATTACK_BF16
+  use_lora_env: ATTACK_USE_LORA
+  gradient_checkpointing_env: ATTACK_GRADIENT_CHECKPOINTING
+  lora_r_env: ATTACK_LORA_R
+  lora_alpha_env: ATTACK_LORA_ALPHA
+  lora_dropout_env: ATTACK_LORA_DROPOUT
+  defaults:
+    bf16: true
+    use_lora: true
+    gradient_checkpointing: true
+    lora_r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+gad_memory:
+  offload_inactive_models_env: GAD_OFFLOAD_INACTIVE_MODELS
+  memory_log_interval_env: GAD_MEMORY_LOG_INTERVAL
+  generator_device_env: GAD_GENERATOR_DEVICE
+  discriminator_device_env: GAD_DISCRIMINATOR_DEVICE
+  defaults:
+    offload_inactive_models: false
+    memory_log_interval: 25
+    generator_device: auto
+    discriminator_device: auto
+soda_resume:
+  student_negatives_jsonl_env: SODA_STUDENT_NEGATIVES_JSONL
+  preferences_jsonl_env: SODA_PREFERENCES_JSONL
+  usage: Reuse precomputed SODA negatives/preferences so DPO training does not require a live student vLLM endpoint.
+shared_teacher_transcript:
+  enabled: true
+  root_env: SHARED_TRANSCRIPT_ROOT
+  dir_env: SHARED_TRANSCRIPT_DIR
+  build_script: attacks/scripts/run_shared_transcript.sh
+  compatible_attacks:
+    seqkd: Plain hard-label SFT on prompt/teacher_response.
+    lord: Reuses teacher_response as y_vic anchor; no extra teacher queries after transcript.
+    soda: Reuses teacher_response as chosen response; student negatives are generated separately.
+    gad: Reuses teacher_response for SeqKD warmup and BT teacher-vs-student pairs.
+  not_shared:
+    model_leeching: Requires templated prompts before teacher query plus parse/clean/validate after response.
+    qedks: Uses method-specific seed/template/followup active querying, not a plain fixed transcript.
+    domain_stealing: Builds prompts online from entity/relation exploration and PPL scheduling.
+budgets:
+  default: 10000
+  supported: [100, 500, 1000, 10000, 50000, 200000]
+attacks:
+  seqkd: {enabled: true, uses_shared_teacher_transcript: true}
+  lord: {enabled: true, uses_shared_teacher_transcript: true}
+  soda: {enabled: true, uses_shared_teacher_transcript: true, beta: 0.1}
+  qedks: {enabled: true, uses_shared_teacher_transcript: false, max_followups_per_answer: 4}
+  model_leeching: {enabled: true, uses_shared_teacher_transcript: false, required_extra_steps: [template_wrap, parse_clean_validate]}
+  gad: {enabled: true, uses_shared_teacher_transcript: true, group_size: 8, kl_beta: 0.001, discriminator_loss: bradley_terry}

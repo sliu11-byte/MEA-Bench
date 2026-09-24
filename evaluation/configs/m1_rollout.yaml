@@ -1,0 +1,218 @@
+version: 1
+output_root: results/m1_rollout
+
+models:
+  qwen_72b_target:
+    model_id: Qwen/Qwen2.5-72B-Instruct
+    role: target_victim_teacher
+    family: qwen2.5
+    size: 72B
+    checkpoint_type: instruct
+    base_url: ${QWEN72_BASE_URL}
+    api_key: ${QWEN72_API_KEY:-EMPTY}
+    request_model_name: ${QWEN72_REQUEST_MODEL:-Qwen/Qwen2.5-72B-Instruct}
+    prompt_rendering_mode: chat_completions
+    backend: vllm_openai_compatible
+    dtype: auto
+    quantization_setting: null
+    tensor_parallel_size: 2
+
+  qwen_7b_same_family:
+    model_id: Qwen/Qwen2.5-7B
+    role: small_model_same_family
+    family: qwen2.5
+    size: 7B
+    checkpoint_type: base
+    base_url: ${QWEN7_BASE_URL}
+    api_key: ${QWEN7_API_KEY:-EMPTY}
+    request_model_name: ${QWEN7_REQUEST_MODEL:-Qwen/Qwen2.5-7B}
+    prompt_rendering_mode: completions
+    backend: vllm_openai_compatible
+    dtype: auto
+    quantization_setting: null
+    tensor_parallel_size: 1
+
+  mistral_7b_cross_family:
+    model_id: mistralai/Mistral-7B-v0.3
+    role: small_model_cross_family
+    family: mistral
+    size: 7B
+    checkpoint_type: base
+    base_url: ${MISTRAL7_BASE_URL}
+    api_key: ${MISTRAL7_API_KEY:-EMPTY}
+    request_model_name: ${MISTRAL7_REQUEST_MODEL:-mistralai/Mistral-7B-v0.3}
+    prompt_rendering_mode: completions
+    backend: vllm_openai_compatible
+    dtype: auto
+    quantization_setting: null
+    tensor_parallel_size: 1
+
+datasets:
+  arc_challenge:
+    display_name: ARC-Challenge
+    adapter: arc_challenge
+    source: huggingface
+    identifier: allenai/ai2_arc
+    config_name: ARC-Challenge
+    revision: null
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+
+  hellaswag:
+    display_name: HellaSwag
+    adapter: hellaswag
+    source: huggingface
+    identifier: Rowan/hellaswag
+    config_name: null
+    revision: null
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+
+  mmlu:
+    display_name: MMLU
+    adapter: mmlu
+    source: huggingface
+    identifier: cais/mmlu
+    config_name: all
+    revision: null
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+
+  truthfulqa:
+    display_name: TruthfulQA
+    adapter: truthfulqa
+    source: huggingface
+    identifier: truthfulqa/truthful_qa
+    config_name: multiple_choice
+    revision: null
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+
+  winogrande:
+    display_name: WinoGrande
+    adapter: winogrande
+    source: huggingface
+    identifier: allenai/winogrande
+    config_name: winogrande_xl
+    revision: null
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+
+  gsm8k:
+    display_name: GSM8K
+    adapter: gsm8k
+    source: huggingface
+    identifier: openai/gsm8k
+    config_name: main
+    revision: null
+    requested_splits: [train, validation]
+    task_type: numeric_qa
+
+  medqa:
+    display_name: MedQA
+    adapter: medqa
+    source: huggingface
+    identifier: bigbio/med_qa
+    config_name: null
+    revision: null
+    trust_remote_code: true
+    requested_splits: [train, validation]
+    task_type: multiple_choice
+    provenance_note: Source and prompt mapping follow the paper author's LLMStealing repository.
+
+  pubmedqa:
+    display_name: PubMedQA
+    adapter: pubmedqa
+    source: huggingface
+    identifier: bigbio/pubmed_qa
+    config_name: null
+    revision: null
+    trust_remote_code: true
+    requested_splits: [train, validation]
+    task_type: categorical_qa
+    provenance_note: Source and prompt mapping follow the paper author's LLMStealing repository.
+
+  chemprot:
+    display_name: ChemProt
+    adapter: chemprot
+    source: huggingface
+    identifier: AdaptLLM/ChemProt
+    config_name: null
+    revision: null
+    trust_remote_code: true
+    requested_splits: [train, validation]
+    task_type: relation_classification
+    provenance_note: Source, 14-label mapping, and prompt follow the paper author's LLMStealing repository.
+
+  fomc:
+    display_name: FOMC
+    adapter: fomc
+    source: huggingface
+    identifier: Sorour/fomc
+    config_name: null
+    revision: null
+    requested_splits: [train, validation]
+    task_type: stance_classification
+    provenance_note: Source and label mapping follow the paper author's LLMStealing repository.
+
+  headline:
+    display_name: HeadLine
+    adapter: headline
+    source: huggingface
+    identifier: SaguaroCapital/sentiment-analysis-in-commodity-market-gold
+    config_name: null
+    revision: null
+    requested_splits: [train, validation]
+    task_type: sentiment_classification
+    provenance_note: Source and label mapping follow the paper author's LLMStealing repository.
+
+  fpb:
+    display_name: FPB
+    adapter: fpb
+    source: huggingface
+    identifier: takala/financial_phrasebank
+    config_name: sentences_50agree
+    revision: null
+    trust_remote_code: true
+    requested_splits: [train, validation]
+    task_type: sentiment_classification
+    provenance_note: Source and config follow the paper author's LLMStealing repository; no artificial split is permitted in M1.
+
+  humaneval:
+    display_name: HumanEval
+    adapter: humaneval
+    source: huggingface
+    identifier: openai/openai_humaneval
+    config_name: null
+    revision: null
+    requested_splits: [test]
+    official_split_output_name: official
+    task_type: code_generation
+
+generation:
+  seed: 42
+  temperature: 0.0
+  top_p: 1.0
+  top_k: null
+  repetition_penalty: 1.0
+  max_tokens_multiple_choice: 32
+  max_tokens_gsm8k: 512
+  max_tokens_domain_qa: 256
+  max_tokens_humaneval: 1024
+  concurrency: 1
+  stop_sequences: []
+
+retry:
+  max_attempts: 4
+  initial_backoff_seconds: 1.0
+  max_backoff_seconds: 30.0
+  multiplier: 2.0
+  request_timeout_seconds: 120.0
+
+sampling:
+  selection_seed: 42
+  manifest_pool_size: 100
+  smoke_examples_per_split: 2
+  pilot_examples_per_split: 10
+  humaneval_pilot_examples: 10
+

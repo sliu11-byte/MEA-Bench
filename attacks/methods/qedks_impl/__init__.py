@@ -1,0 +1,2 @@
+"""Migrated QEDKS attack implementation."""
+

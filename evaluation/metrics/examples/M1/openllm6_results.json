@@ -1,0 +1,21 @@
+{
+  "results": {
+    "arc_challenge": {"acc_norm,none": 0.5},
+    "hellaswag": {"acc_norm,none": 0.6},
+    "mmlu": {"acc,none": 0.7},
+    "truthfulqa_mc2": {"acc,none": 0.4},
+    "winogrande": {"acc,none": 0.8},
+    "gsm8k": {
+      "exact_match,strict-match": 0.3,
+      "exact_match,flexible-extract": 0.9
+    }
+  },
+  "n-shot": {
+    "arc_challenge": 25,
+    "hellaswag": 10,
+    "mmlu": 5,
+    "truthfulqa_mc2": 0,
+    "winogrande": 5,
+    "gsm8k": 5
+  }
+}

@@ -1,0 +1,4 @@
+{"task":"math","prediction":"A","target":"A"}
+{"task":"math","prediction":"B","target":"A"}
+{"task":"science","prediction":"yes","target":"yes"}
+{"task":"science","prediction":"no","target":"no"}

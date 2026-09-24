@@ -1,0 +1,4 @@
+{"method":"SeqKD","budget":100,"value":0.52,"effect_family":"M2","metric":"agreement_rate","unit":"rate_0_to_1"}
+{"method":"SeqKD","budget":500,"value":0.81,"effect_family":"M2","metric":"agreement_rate","unit":"rate_0_to_1"}
+{"method":"LoRD","budget":100,"value":0.60,"effect_family":"M2","metric":"agreement_rate","unit":"rate_0_to_1"}
+{"method":"LoRD","budget":500,"value":0.74,"effect_family":"M2","metric":"agreement_rate","unit":"rate_0_to_1"}

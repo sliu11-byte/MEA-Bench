@@ -1,0 +1,15 @@
+{"entity_id":"cal-benign-1","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.10}
+{"entity_id":"cal-benign-1","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.20}
+{"entity_id":"cal-benign-1","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.20}
+{"entity_id":"cal-benign-2","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.15}
+{"entity_id":"cal-benign-2","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.25}
+{"entity_id":"cal-benign-2","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.25}
+{"entity_id":"cal-benign-3","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"cal-benign-3","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"cal-benign-3","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"cal-benign-4","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.35}
+{"entity_id":"cal-benign-4","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.35}
+{"entity_id":"cal-benign-4","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.35}
+{"entity_id":"cal-benign-5","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.40}
+{"entity_id":"cal-benign-5","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.40}
+{"entity_id":"cal-benign-5","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.40}

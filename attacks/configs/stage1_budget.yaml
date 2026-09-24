@@ -1,0 +1,73 @@
+teacher_backend: ${STAGE1_TEACHER_BACKEND:-local_hf}
+teacher_model_path: ${STAGE1_TEACHER_MODEL_PATH}
+teacher_model_name: ${STAGE1_TEACHER_MODEL_NAME:-teacher}
+teacher_base_url: ${STAGE1_TEACHER_BASE_URL:-}
+teacher_api_key: ${STAGE1_TEACHER_API_KEY:-EMPTY}
+teacher_mode: ${STAGE1_TEACHER_MODE:-completion}
+student_model_path: ${STAGE1_STUDENT_MODEL_PATH}
+query_pool_path: ${STAGE1_QUERY_POOL_PATH:-data/query_pool.json}
+query_ordering_path: ${STAGE1_QUERY_ORDERING_PATH:-data/query_ordering.json}
+allowed_budgets: [100, 1000, 10000]
+seed: ${STAGE1_SEED:-20260701}
+output_root: ${STAGE1_OUTPUT_ROOT:-results/stage1}
+teacher_decode:
+  strategy: greedy
+  settings:
+    max_new_tokens: 64
+    num_beams: 1
+seqkd_training:
+  max_seq_length: 2048
+  learning_rate: 2.0e-5
+  num_train_epochs: 1.0
+  max_steps: -1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 1
+  optim: adamw_torch
+  lr_scheduler_type: linear
+  warmup_ratio: 0.0
+  fp16: false
+  bf16: false
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  use_lora: false
+  allow_sampling_transcript: false
+  include_eos_in_loss: true
+  save_total_limit: 1
+  logging_steps: 1
+  save_strategy: "no"
+  report_to: []
+lord_training:
+  periods: 1
+  learning_rate: 3.0e-5
+  temperature: 1.0
+  top_p: 0.95
+  max_new_tokens: 64
+  num_return_sequences: 2
+  tau1: 0.8
+  tau2: 0.1
+  tau_delta: 0.05
+  lambda1: 0.5
+  clip_epsilon: 0.2
+  max_grad_norm: 1.0
+  seqkd_warm_start: false
+  generation_backend: transformers
+m1_evaluation:
+  harness: lm_eval
+  evaluation_decode:
+    strategy: greedy
+    settings:
+      max_new_tokens: 64
+  tasks:
+    - name: MMLU
+      task: mmlu
+    - name: ARC-Challenge
+      task: arc_challenge
+    - name: GSM8K
+      task: gsm8k
+    - name: HellaSwag
+      task: hellaswag
+    - name: WinoGrande
+      task: winogrande
+    - name: TruthfulQA
+      task: truthfulqa_mc2

@@ -1,0 +1,52 @@
+{
+  "qwen25_7b": {
+    "role": "student",
+    "model": "Qwen/Qwen2.5-7B",
+    "served_model_name": "qwen25_7b",
+    "port": 8000,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.90
+  },
+  "mistral_7b": {
+    "role": "student",
+    "model": "mistralai/Mistral-7B-v0.3",
+    "served_model_name": "mistral_7b",
+    "port": 8001,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.90
+  },
+  "qwen25_72b": {
+    "role": "teacher",
+    "model": "Qwen/Qwen2.5-72B-Instruct",
+    "served_model_name": "qwen25_72b",
+    "port": 8002,
+    "tensor_parallel_size": 2,
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.90
+  },
+  "mistral_large_2407": {
+    "role": "teacher",
+    "model": "mistralai/Mistral-Large-Instruct-2407",
+    "served_model_name": "mistral_large_2407",
+    "port": 8003,
+    "tensor_parallel_size": 4,
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.90
+  },
+  "llama2_7b": {
+    "role": "student",
+    "model": "meta-llama/Llama-2-7b-hf",
+    "served_model_name": "llama2_7b",
+    "port": 8004,
+    "tensor_parallel_size": 1,
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.70
+  }
+}

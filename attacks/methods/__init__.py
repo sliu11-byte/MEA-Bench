@@ -1,0 +1,1 @@
+"""Attack method implementations."""

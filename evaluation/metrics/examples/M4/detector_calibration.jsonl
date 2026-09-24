@@ -1,0 +1,4 @@
+{"id":"cal-n1","label":"negative","score":0.10,"direction":"higher","detector":"kgw-v1"}
+{"id":"cal-n2","label":"negative","score":0.20,"direction":"higher","detector":"kgw-v1"}
+{"id":"cal-n3","label":"negative","score":0.30,"direction":"higher","detector":"kgw-v1"}
+{"id":"cal-n4","label":"negative","score":0.40,"direction":"higher","detector":"kgw-v1"}

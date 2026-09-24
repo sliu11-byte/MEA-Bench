@@ -1,0 +1,11 @@
+{"entity_id":"benign-1","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.10}
+{"entity_id":"benign-1","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.20}
+{"entity_id":"benign-1","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.20}
+{"entity_id":"benign-2","label":"benign","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"benign-2","label":"benign","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"benign-2","label":"benign","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.30}
+{"entity_id":"attacker-naive","label":"attacker","attack_type":"naive","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.20}
+{"entity_id":"attacker-naive","label":"attacker","attack_type":"naive","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.60}
+{"entity_id":"attacker-evasive","label":"attacker","attack_type":"evasive","rho":0.8,"sybil_group":"group-a","query_index":1,"detector":"active-v1","monitor_mode":"per-account","score":0.10}
+{"entity_id":"attacker-evasive","label":"attacker","attack_type":"evasive","rho":0.8,"sybil_group":"group-a","query_index":2,"detector":"active-v1","monitor_mode":"per-account","score":0.25}
+{"entity_id":"attacker-evasive","label":"attacker","attack_type":"evasive","rho":0.8,"sybil_group":"group-a","query_index":3,"detector":"active-v1","monitor_mode":"per-account","score":0.45}

@@ -1,0 +1,3 @@
+{"id":"candidate-wins","candidate_text":"Paris is the capital of France.","reference_text":"The capital of France is Paris.","forward":{"candidate_position":"A","winner":"A"},"reverse":{"candidate_position":"B","winner":"B"}}
+{"id":"position-disagrees","candidate_text":"Paris.","reference_text":"The capital of France is Paris, a major European city.","forward":{"candidate_position":"A","winner":"A"},"reverse":{"candidate_position":"B","winner":"A"}}
+{"id":"reference-wins","candidate_text":"This answer is much longer but does not directly resolve the question and adds several irrelevant details.","reference_text":"Carbon dioxide.","forward":{"candidate_position":"A","winner":"B"},"reverse":{"candidate_position":"B","winner":"A"}}

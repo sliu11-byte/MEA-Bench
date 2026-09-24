@@ -1,0 +1,70 @@
+{
+  "bank_counts": {
+    "ARC": 23,
+    "GSM8K": 60,
+    "HellaSwag": 45,
+    "LMSYS-Chat-1M": 2400,
+    "MMLU(aux_train)": 75,
+    "NuminaMath-CoT": 120,
+    "OpenBookQA": 22,
+    "PIQA": 45,
+    "SciQ": 30,
+    "Social-IQa": 30,
+    "TriviaQA": 90,
+    "WinoGrande": 60
+  },
+  "block_ids": [
+    10,
+    11,
+    12
+  ],
+  "block_size": 1000,
+  "disjoint_from_train_prefix": true,
+  "heldout_hash": "cf4a52e4e2232bca31c01a2472182c80175a3d4c20fb81a9357b7a89515b9198",
+  "id_hash": "f444bc4f407bc96613f9a21594aef300336228813bde1f70633b74df76a35438",
+  "max_train_budget": 10000,
+  "num_records": 3000,
+  "prompts_output": "evaluation/data/heldout/heldout_prompts.jsonl",
+  "query_pool": "hf://anonymous-mea-benchmark/mea-query-pools/query_pool_100000.json",
+  "query_pool_meta": {
+    "banks": {
+      "ARC": 750,
+      "GSM8K": 2000,
+      "HellaSwag": 1500,
+      "LMSYS-Chat-1M": 80000,
+      "MMLU(aux_train)": 2500,
+      "NuminaMath-CoT": 4000,
+      "OpenBookQA": 750,
+      "PIQA": 1500,
+      "SciQ": 1000,
+      "Social-IQa": 1000,
+      "TriviaQA": 3000,
+      "WinoGrande": 2000
+    },
+    "content_sha1": "2a699aff5d2ed2f13c29eafae538ad01784cc55f",
+    "nested": "小档是大档子集(tier_100 ⊂ tier_1000 ⊂ … ⊂ tier_100000)",
+    "record_fields": "bank=题库名, source=HF id, split=config/split, prompt=题面(不含答案,用教师重生成)",
+    "seed": 20260701,
+    "tier": 100000,
+    "total": 100000
+  },
+  "query_pool_path": null,
+  "query_pool_sha256": "eed3aa8782a6cd45554bc5fdc442b7d775267b80082bc75a60392d99455403fb",
+  "schema_version": "heldout_queries_v1",
+  "source_counts": {
+    "AI-MO/NuminaMath-CoT": 120,
+    "OpenLeecher/lmsys_chat_1m_clean": 2400,
+    "Rowan/hellaswag": 45,
+    "allenai/ai2_arc": 23,
+    "allenai/openbookqa": 22,
+    "allenai/sciq": 30,
+    "allenai/winogrande": 60,
+    "cais/mmlu": 75,
+    "lighteval/siqa": 30,
+    "mandarjoshi/trivia_qa": 90,
+    "openai/gsm8k": 60,
+    "ybisk/piqa": 45
+  },
+  "source_index_end_exclusive": 13000,
+  "source_index_start": 10000
+}
