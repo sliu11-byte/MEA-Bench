@@ -1,4 +1,4 @@
-"""Evaluate local Llama SeqKD B=1000 counter checkpoints without retraining."""
+"""Evaluate local Llama B=1000 counter checkpoints without retraining."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ TEACHER = "meta-llama/Llama-3.3-70B-Instruct"
 BASE = "meta-llama/Llama-3.1-8B-Instruct"
 DEFENSES = ("adfp", "ginsew", "radioactivity")
 COUNTERS = ("dipper", "translation")
+ATTACKS = ("seqkd", "qedks")
 
 
 def read_json(path):
@@ -37,15 +38,30 @@ def local_path(value, storage):
     raise FileNotFoundError(f"Local artifact missing: {value}")
 
 
-def checkpoint_from_manifest(path, storage):
+def checkpoint_from_manifest(path, storage, attack="seqkd"):
     manifest = read_json(path)
     result = manifest.get("result", {})
     config = manifest.get("run_config", {})
-    if result.get("attack") != "seqkd" or result.get("budget") != 1000 or result.get("status") != "completed":
-        raise ValueError(f"Not a completed SeqKD B=1000 run: {path}")
+    if attack not in ATTACKS:
+        raise ValueError(f"Unsupported counter attack: {attack}")
+    if result.get("attack") != attack or result.get("budget") != 1000 or result.get("status") != "completed":
+        raise ValueError(f"Not a completed {attack} B=1000 run: {path}")
     if config.get("teacher_model") != TEACHER or config.get("student_model") != BASE:
         raise ValueError(f"Wrong teacher/student: {path}")
     checkpoint = local_path(result.get("checkpoint_dir") or manifest.get("checkpoint_dir"), storage)
+    if attack == "qedks":
+        adapter_config = checkpoint / "adapter_config.json"
+        if not adapter_config.is_file():
+            raise ValueError(f"Missing QEDKS adapter config: {checkpoint}")
+        adapter = checkpoint / "adapter_model.safetensors"
+        if not adapter.is_file():
+            adapter = checkpoint / "adapter_model.bin"
+        if not adapter.is_file() or adapter.stat().st_size == 0:
+            raise ValueError(f"Missing QEDKS adapter weights: {checkpoint}")
+        adapter_base = read_json(adapter_config).get("base_model_name_or_path")
+        if adapter_base != BASE:
+            raise ValueError(f"Wrong QEDKS adapter base {adapter_base!r}: {checkpoint}")
+        return checkpoint
     if not (checkpoint / "config.json").exists():
         raise ValueError(f"Expected full model checkpoint: {checkpoint}")
     index = checkpoint / "model.safetensors.index.json"
@@ -58,13 +74,19 @@ def checkpoint_from_manifest(path, storage):
     return checkpoint
 
 
-def discover_local(storage):
+def discover_local(storage, attack="seqkd"):
+    if attack not in ATTACKS:
+        raise ValueError(f"Unsupported counter attack: {attack}")
     models, reports = {}, {}
     for counter in COUNTERS:
         for defense in DEFENSES:
-            directory = storage / "outputs/countermeasures/seqkd_b1000" / counter / defense
+            candidates = (
+                storage / "outputs" / "adaptive" / counter / defense / attack / "b1000",
+                storage / "outputs" / "countermeasures" / f"{attack}_b1000" / counter / defense,
+            )
+            directory = next((path for path in candidates if (path / "comparison_report.json").is_file()), candidates[0])
             report = read_json(directory / "comparison_report.json")
-            if (report.get("attack"), report.get("budget"), report.get("defense")) != ("seqkd", 1000, defense):
+            if (report.get("attack"), report.get("budget"), report.get("defense")) != (attack, 1000, defense):
                 raise ValueError(f"Wrong comparison report: {directory}")
             reports[counter, defense] = report
             for group in ("clean", "defense_only"):
@@ -72,7 +94,7 @@ def discover_local(storage):
                 if baseline.get("status") != "ok":
                     raise ValueError(f"Incomplete baseline: {directory}/{group}")
                 manifest = local_path(baseline["attack_manifest_path"], storage)
-                checkpoint = checkpoint_from_manifest(manifest, storage)
+                checkpoint = checkpoint_from_manifest(manifest, storage, attack)
                 name = "clean" if group == "clean" else f"{defense}_defense_only"
                 if name in models and models[name] != checkpoint:
                     raise ValueError(f"Baselines differ between counter methods: {name}")
@@ -84,7 +106,7 @@ def discover_local(storage):
                 manifest = suspect
             else:
                 candidates = []
-                for path in directory.glob("attack/seqkd/*/attack_manifest.json"):
+                for path in directory.glob(f"attack/{attack}/*/attack_manifest.json"):
                     result = read_json(path).get("result", {})
                     if result.get("status") != "completed":
                         continue
@@ -94,7 +116,7 @@ def discover_local(storage):
                 if len(candidates) != 1:
                     raise ValueError(f"Cannot uniquely identify counter run: {directory}")
                 manifest = candidates[0]
-            models[f"{defense}_{counter}"] = checkpoint_from_manifest(manifest, storage)
+            models[f"{defense}_{counter}"] = checkpoint_from_manifest(manifest, storage, attack)
     for defense in DEFENSES:
         dipper = reports["dipper", defense]
         translation = reports["translation", defense]
@@ -102,11 +124,60 @@ def discover_local(storage):
             if dipper["reports"].get(group) != translation["reports"].get(group):
                 raise ValueError(
                     f"{defense} {group} detector baseline differs between DIPPER and translation; "
-                    "run runs/evaluation/rebuild_counter_seqkd_b1000_baselines.sh first"
+                    f"run runs/evaluation/rebuild_counter_{attack}_b1000_baselines.sh first"
                 )
     if len(models) != 10 or len(set(models.values())) != 10:
         raise ValueError("Expected ten distinct local checkpoints")
     return models, reports
+
+
+def discover_from_manifest(manifest_path, storage):
+    path = Path(manifest_path).expanduser().resolve()
+    payload = read_json(path)
+    generator = payload.get("generator_result") or {}
+    metadata = payload.get("metadata") or {}
+    generator_metadata = generator.get("metadata") or {}
+    comparison_value = metadata.get("comparison") or generator_metadata.get("comparison")
+    if not comparison_value:
+        raise ValueError(f"Adaptive manifest has no comparison report: {path}")
+    comparison_path = local_path(comparison_value, storage)
+    report = read_json(comparison_path)
+    attack = str(report.get("attack") or generator_metadata.get("attack", {}).get("attack") or "")
+    defense = str(report.get("defense") or payload.get("defense") or "")
+    counter = str(generator_metadata.get("countermeasure") or "")
+    if counter.startswith("waterpark_"):
+        counter = counter.removeprefix("waterpark_")
+    if counter not in COUNTERS:
+        counter = next((part for part in path.parts if part in COUNTERS), "")
+    if attack not in ATTACKS or defense not in DEFENSES or counter not in COUNTERS:
+        raise ValueError(
+            f"Could not resolve adaptive identity from {path}: "
+            f"attack={attack!r}, defense={defense!r}, counter={counter!r}"
+        )
+
+    baseline_values = report.get("baseline_manifests") or {}
+    models = {}
+    for group, name in (("clean", "clean"), ("defense_only", f"{defense}_defense_only")):
+        baseline_path = local_path(baseline_values.get(group), storage)
+        baseline = read_json(baseline_path)
+        if baseline.get("status") != "ok":
+            raise ValueError(f"Incomplete adaptive baseline: {baseline_path}")
+        attack_manifest = local_path(baseline.get("attack_manifest_path"), storage)
+        models[name] = checkpoint_from_manifest(attack_manifest, storage, attack)
+
+    counter_manifest_value = generator.get("attack_manifest_path")
+    if not counter_manifest_value:
+        counter_report = (report.get("reports") or {}).get("counter") or {}
+        student = (counter_report.get("students") or [counter_report])[0]
+        counter_manifest_value = counter_report.get("student_checkpoint") or student.get("student_checkpoint")
+    counter_manifest = local_path(counter_manifest_value, storage)
+    if counter_manifest.name != "attack_manifest.json":
+        candidates = list(counter_manifest.parent.rglob("attack_manifest.json"))
+        if len(candidates) != 1:
+            raise ValueError(f"Could not resolve counter attack manifest near {counter_manifest}")
+        counter_manifest = candidates[0]
+    models[f"{defense}_{counter}"] = checkpoint_from_manifest(counter_manifest, storage, attack)
+    return attack, models, {(counter, defense): report}
 
 
 def detector_stats(report):
@@ -158,10 +229,12 @@ def validate_teacher_manifest(manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--storage-root", required=True)
+    parser.add_argument("--attack", choices=ATTACKS, default="seqkd")
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--prompts-jsonl", required=True)
     parser.add_argument("--teacher-jsonl", required=True)
     parser.add_argument("--teacher-manifest")
+    parser.add_argument("--manifest", help="Evaluate the adaptive run recorded by this local manifest.")
     parser.add_argument("--reuse-generation-root",
                         help="Old Counter output root; reuse only GSM8K and held-out JSONL files.")
     parser.add_argument("--limit", type=int, default=0)
@@ -170,7 +243,12 @@ def main():
     if args.limit < 0:
         parser.error("limit must be nonnegative")
     storage = Path(args.storage_root).resolve()
-    models, reports = discover_local(storage)
+    if args.manifest:
+        manifest_attack, models, reports = discover_from_manifest(args.manifest, storage)
+        if args.attack != manifest_attack:
+            raise ValueError(f"Manifest attack is {manifest_attack}, not {args.attack}")
+    else:
+        models, reports = discover_local(storage, args.attack)
     teacher_path = Path(args.teacher_jsonl)
     manifest = read_json(args.teacher_manifest or teacher_path.with_suffix(".manifest.json"))
     teacher_generation = validate_teacher_manifest(manifest)
@@ -199,7 +277,9 @@ def main():
     write_json(output / "input_detection_reports.json", {f"{counter}/{defense}": report
                                                         for (counter, defense), report in reports.items()})
     tasks, metadata = prepare_tasks(Path("evaluation/configs/m1_rollout.yaml"), args.limit, output)
-    protocol = {"teacher": TEACHER, "base": BASE, "checkpoints": {k: str(v) for k, v in models.items()},
+    protocol = {"attack": args.attack, "teacher": TEACHER, "base": BASE,
+                "checkpoint_format": "peft_lora" if args.attack == "qedks" else "full_model",
+                "checkpoints": {k: str(v) for k, v in models.items()},
                 "tasks": metadata, "prompts": prompts, "teacher_reference": [teacher[p["id"]] for p in prompts],
                 "teacher_generation": teacher_generation, "student_rendering": "chat", "seed": 42,
                 "m1_multiple_choice_scoring": SCORING_METHOD,
@@ -218,7 +298,12 @@ def main():
             copied = reuse_valid_generations(reuse_root / "models" / name, directory)
             if copied:
                 print(f"[Counter reuse] {name}: {', '.join(copied)}", flush=True)
-        acc, rows = evaluate_model(directory, str(checkpoint), True, tasks, prompts, True)
+        if args.attack == "qedks":
+            acc, rows = evaluate_model(
+                directory, BASE, True, tasks, prompts, True, checkpoint=checkpoint
+            )
+        else:
+            acc, rows = evaluate_model(directory, str(checkpoint), True, tasks, prompts, True)
         score = bertscore_f1([rows[p["id"]]["text"] for p in prompts],
                              [teacher[p["id"]]["teacher_text"] for p in prompts], "en", "roberta-large", 16, "cuda:0")
         write_json(directory / "m2_bertscore.json", {"bertscore": score, "n": len(prompts), "reference": str(teacher_path)})
@@ -230,12 +315,13 @@ def main():
     for (counter, defense), report in reports.items():
         for group, name in (("clean", "clean"), ("defense_only", f"{defense}_defense_only"),
                             ("counter", f"{defense}_{counter}")):
-            comparisons.append({"attack": "seqkd", "budget": 1000, "defense": defense, "countermeasure": counter,
+            comparisons.append({"attack": args.attack, "budget": 1000, "defense": defense, "countermeasure": counter,
                                 "condition": group, "model": name, **scores[name],
                                 **detector_stats(report["reports"][group]), "smoke": bool(args.limit)})
     write_json(output / "summary.json", comparisons)
     write_table(output / "summary.csv", comparisons)
-    write_json(output / "complete.json", {"complete": True, "models": 10, "comparison_rows": 18, "smoke": bool(args.limit)})
+    write_json(output / "complete.json", {"complete": True, "models": len(models),
+                                           "comparison_rows": len(comparisons), "smoke": bool(args.limit)})
     print(f"[Counter evaluation] complete -> {output / 'summary.csv'}", flush=True)
 
 

@@ -25,6 +25,38 @@ def comparison_path(storage: Path, attack: str, budget: int, counter: str, defen
     return storage / "outputs" / "countermeasures" / f"{attack}_b{budget}" / counter / defense / "comparison_report.json"
 
 
+def shared_baselines_ready(
+    storage: Path,
+    attack: str,
+    budget: int,
+    seed: int,
+    temperature: float,
+    max_queries: int,
+    max_new_tokens: int,
+) -> bool:
+    expected = {
+        "shared_across_countermeasures": True,
+        "seed": seed,
+        "temperature": temperature,
+        "max_queries": max_queries,
+        "max_new_tokens": max_new_tokens,
+    }
+    for defense in DEFENSES:
+        reports = []
+        for counter in COUNTERS:
+            path = comparison_path(storage, attack, budget, counter, defense)
+            if not path.is_file():
+                return False
+            report = read_json(path)
+            if report.get("baseline_detection_protocol") != expected:
+                return False
+            reports.append(report)
+        for group in ("clean", "defense_only"):
+            if reports[0].get("reports", {}).get(group) != reports[1].get("reports", {}).get(group):
+                return False
+    return True
+
+
 def load_shared_baselines(paths: dict[str, Path]) -> dict[str, object]:
     manifests: dict[str, Path] = {}
     for group in ("clean", "defense_only"):
@@ -86,8 +118,20 @@ def main() -> None:
     parser.add_argument("--detector-max-new-tokens", type=int, default=124)
     parser.add_argument("--detector-temperature", type=float, default=0.7)
     parser.add_argument("--evaluation-root")
+    parser.add_argument("--skip-if-shared", action="store_true")
     args = parser.parse_args()
     storage = Path(args.storage_root).resolve()
+    if args.skip_if_shared and shared_baselines_ready(
+        storage,
+        args.attack,
+        args.budget,
+        args.detector_seed,
+        args.detector_temperature,
+        args.detector_max_queries,
+        args.detector_max_new_tokens,
+    ):
+        print("[counter baseline repair] matching shared detector baselines already exist; skipping", flush=True)
+        return
     runner_args = SimpleNamespace(
         attack=args.attack,
         budget=args.budget,

@@ -1,32 +1,47 @@
 # Evaluation runs
 
-All generated run artifacts and defense checkpoints are read from local paths.
-Hugging Face remains available only for benchmark datasets and model downloads.
-
-## Attack evaluation
+Use the top-level entry point for every public evaluation:
 
 ```bash
-ATTACK_ROOT=/path/to/attack_runs/b100 \
-bash runs/evaluation/evaluate_attack_b100.sh
-
-ATTACK_B1000_ROOT=/path/to/attack_runs/b1000 \
-bash runs/evaluation/evaluate_attack_b1000.sh
+bash runs/run_evaluation.sh \
+  --manifest outputs/attacks/seqkd/<run-id>/attack_manifest.json
 ```
 
-The B=10000 entry point is `runs/evaluation/evaluate_attack_b10000.sh` and uses
-`ATTACK_B10000_ROOT`. Optional smoke runs set `EVAL_LIMIT` and `EVAL_ATTACK`.
+The manifest may belong to an attack, defended extraction run, adaptive attack,
+or result-based detector. The entry point determines the run type and evaluates
+only that selected run.
 
-## Defense evaluation
+It automatically:
 
-Place local checkpoints under
-`${DEFENSE_CHECKPOINT_ROOT:-$STORAGE_ROOT/inputs/defense_checkpoints}` using the
-layout expected by `evaluation/defense_eval/evaluate.py`, then run:
+- resolves checkpoints and reports recorded by the manifest;
+- remaps historical absolute paths below `outputs/` to the current local
+  `STORAGE_ROOT`;
+- builds the held-out prompt split when it is absent;
+- generates and validates held-out teacher outputs when required;
+- builds the shared Qwen reference evaluation for a defended extraction run;
+- follows adaptive baseline manifests to their local attack checkpoints; and
+- validates and collects an existing result-based detector report.
 
-```bash
-bash runs/evaluation/build_defense_reference.sh
-ATTACK=seqkd bash runs/evaluation/evaluate_defense_students.sh
-bash runs/evaluation/evaluate_duffin.sh
+Useful optional arguments are:
+
+```text
+--limit N
+--output-root outputs/evaluation
+--storage-root PATH
+--dry-run
 ```
 
-Countermeasure evaluation is available through
-`evaluate_counter_seqkd_b1000.sh` and `evaluate_counter_seqkd_b1000_v2.sh`.
+`--limit` creates a smoke evaluation. The lower-level scripts in this directory
+are implementation drivers used by the top-level command; their environment
+variables and historical bundle layouts are not part of the public reproduction
+interface.
+
+`--manifest` selects the source run and is the only input location normally
+needed. `--output-root` selects where metrics are written. If a copied snapshot
+contains obsolete absolute paths below `outputs/`, pass the snapshot's current
+artifact root through `--storage-root`; the evaluator remaps those recorded paths
+without requiring checkpoint arguments.
+
+Hugging Face is used only for benchmark datasets and model downloads. Evaluation
+results, checkpoints, generated teacher references, and detector reports are
+read from or written to local storage.

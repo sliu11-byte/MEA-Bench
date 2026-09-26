@@ -2,11 +2,6 @@
 
 set -euo pipefail
 
-if command -v module >/dev/null 2>&1; then
-  module purge || true
-  command -v module >/dev/null 2>&1 && module load conda/25.7.0 || true || true
-fi
-if command -v conda >/dev/null 2>&1; then conda activate "${CONDA_ENV:-research}"; fi
 if [[ -n "${CONDA_PREFIX:-}" ]]; then export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"; fi
 
 export OMP_NUM_THREADS="${CPU_THREADS:-4}"
@@ -26,11 +21,11 @@ else
 fi
 cd "${REPO_DIR}"
 
-DEFAULT_STORAGE_ROOT="/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey"
+DEFAULT_STORAGE_ROOT="${REPO_DIR}"
 export STORAGE_ROOT="${STORAGE_ROOT:-${DEFAULT_STORAGE_ROOT}}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a

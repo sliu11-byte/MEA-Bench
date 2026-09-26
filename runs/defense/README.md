@@ -1,17 +1,25 @@
 # Defense runs
 
-Defense experiments use the ordinary shell entry points under
-`defenses/scripts/seqkd/` and `defenses/scripts/seqkd_smoke/`.
+Use the portable top-level runner for defended extraction:
 
 ```bash
-STORAGE_ROOT=/path/to/storage METHOD=ginsew \
-bash defenses/scripts/seqkd/run_seqkd.sh
+bash runs/run_defense.sh --defense ginsew --attack seqkd --budget 1000
 ```
 
-SODA replay inputs are local-only. Set `SODA_SEQKD_LOCAL_ROOT`,
-`SODA_STUDENT_NEGATIVES_JSONL`, `SODA_CLEAN_SEQKD_CHECKPOINT`, or
-`SODA_CLEAN_PREFERENCES` when the defaults under `STORAGE_ROOT` do not match
-your layout.
+DuFFin, MMD, PRADA, and SEAT instead consume a completed attack manifest:
+
+```bash
+bash runs/run_defense.sh --defense mmd --attack-run /path/to/attack_manifest.json
+```
+
+The top-level wrapper dispatches to the retained `runs/defense/common.sh` and
+`runs/defense/detector_common.sh` implementations. Scripts under
+`defenses/scripts/` are development and smoke-test controls.
+
+When SODA is selected as the extraction attack, the runner automatically
+generates the protected responses, trains or reuses the matched SeqKD
+initialization, prepares the preference data, and then trains SODA. No separate
+artifact-preparation command is required.
 
 Query-traffic runs accept a local attack output directory through
 `ATTACK_OUTPUT_SOURCE`. Benchmark query pools may still be read from Hugging

@@ -1,0 +1,87 @@
+schema_version: mea_benchmark_profile_v1
+name: paper
+
+budgets:
+  attacks: [100, 1000, 10000]
+  defended_extraction: [1000]
+  adaptive: [1000]
+
+data:
+  query_pool: auto
+  query_ordering: auto
+
+attack:
+  output_root: outputs
+  stage1_config: attacks/configs/formal_stage1_budget.yaml
+  seed: 20260701
+  shared_transcript_attacks: [seqkd, lord, soda, gad]
+  teacher:
+    backend: vllm_openai
+    model: meta-llama/Llama-3.3-70B-Instruct
+    endpoint: http://127.0.0.1:8000/v1
+    request_model: meta-llama/Llama-3.3-70B-Instruct
+    mode: chat
+    temperature: 0.0
+    top_p: 1.0
+    max_tokens: 1536
+  student:
+    model: meta-llama/Llama-3.1-8B-Instruct
+    endpoint: http://127.0.0.1:8001/v1
+    request_model: meta-llama/Llama-3.1-8B-Instruct
+    mode: chat
+    temperature: 0.7
+    top_p: 1.0
+    max_tokens: 1536
+  training:
+    bf16: true
+    use_lora: true
+    gradient_checkpointing: true
+    lora_r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+  methods:
+    seqkd: {}
+    lord: {}
+    soda:
+      beta: 0.1
+      learning_rate: 0.000005
+      epochs: 1.0
+      per_device_train_batch_size: 1
+      gradient_accumulation_steps: 32
+      max_length: 3584
+      max_prompt_length: 1024
+    qedks:
+      max_followups_per_answer: 4
+      learning_rate: 0.0002
+      epochs: 2.0
+      lora_r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+    model_leeching:
+      learning_rate: 0.0002
+      epochs: 2.0
+      lora_r: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+    gad:
+      group_size: 8
+      kl_beta: 0.001
+      learning_rate: 0.000001
+      discriminator_learning_rate: 0.000001
+      warmup_learning_rate: 0.000005
+      warmup_epochs: 1.0
+      epochs: 2.0
+
+defense:
+  defended_extraction: [ads, doge, trace_rewriting, adfp, ginsew, radioactivity]
+  result_based: [duffin, mmd, prada, seat]
+  teacher_model: Qwen/Qwen2.5-72B-Instruct
+  student_model: Qwen/Qwen2.5-7B
+
+adaptive:
+  methods: [dipper, translation]
+  defenses: [adfp, ginsew, radioactivity]
+
+evaluation:
+  seed: 42
+  metrics: [m1, m2, m3, m4, m5, m6, m7]

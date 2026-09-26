@@ -11,10 +11,6 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_DIR}"
 mkdir -p logs
 
-command -v module >/dev/null 2>&1 && module purge || true
-command -v module >/dev/null 2>&1 && module load conda/25.7.0 || true
-command -v module >/dev/null 2>&1 && module load cuda/12.4.1 || true
-command -v conda >/dev/null 2>&1 && conda activate "${CONDA_ENV:-research}" || true
 if [[ -n "${CONDA_PREFIX:-}" ]]; then
   export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
 fi
@@ -23,18 +19,15 @@ export OMP_NUM_THREADS="${CPU_THREADS:-4}"
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export PYTHONUNBUFFERED=1
 
-export STORAGE_ROOT="${STORAGE_ROOT:-/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey}"
+export STORAGE_ROOT="${STORAGE_ROOT:-${REPO_DIR}}"
 
-# The published defense checkpoints reused below are the Qwen B=1000 runs.
-# Seed these before sourcing the general attack defaults, which otherwise fill
-# unset model variables with the Llama benchmark configuration.
-if [[ "${ATTACK}" == "soda" ]]; then
-  export TEACHER_MODEL="${TEACHER_MODEL:-Qwen/Qwen2.5-72B-Instruct}"
-  export STUDENT_MODEL="${STUDENT_MODEL:-Qwen/Qwen2.5-7B}"
-fi
+# The paper defense benchmark uses the Qwen teacher/student pair for every
+# attack and defense condition.
+export TEACHER_MODEL="${TEACHER_MODEL:-Qwen/Qwen2.5-72B-Instruct}"
+export STUDENT_MODEL="${STUDENT_MODEL:-Qwen/Qwen2.5-7B}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a
@@ -49,13 +42,8 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}/transformers}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME}/hub}"
 mkdir -p "${HF_DATASETS_CACHE}" "${TRANSFORMERS_CACHE}" "${HF_HUB_CACHE}"
 
-if [[ "${ATTACK}" == "soda" ]]; then
-  DEFAULT_TEACHER_MODEL="Qwen/Qwen2.5-72B-Instruct"
-  DEFAULT_STUDENT_MODEL="Qwen/Qwen2.5-7B"
-else
-  DEFAULT_TEACHER_MODEL="meta-llama/Llama-3.3-70B-Instruct"
-  DEFAULT_STUDENT_MODEL="meta-llama/Llama-3.1-8B-Instruct"
-fi
+DEFAULT_TEACHER_MODEL="Qwen/Qwen2.5-72B-Instruct"
+DEFAULT_STUDENT_MODEL="Qwen/Qwen2.5-7B"
 export TEACHER_MODEL="${TEACHER_MODEL:-${DEFAULT_TEACHER_MODEL}}"
 export TEACHER_ENDPOINT_URL="${TEACHER_ENDPOINT_URL:-http://127.0.0.1:4000/v1}"
 export TEACHER_BASE_URL="${TEACHER_BASE_URL:-${TEACHER_ENDPOINT_URL}}"
@@ -89,11 +77,11 @@ export ADS_ALLOW_LAM_BATCH="${ADS_ALLOW_LAM_BATCH:-0}"
 export ADS_GRAD_MODEL_DTYPE="${ADS_GRAD_MODEL_DTYPE:-auto}"
 export ADS_GRAD_DTYPE="${ADS_GRAD_DTYPE:-float32}"
 export ADFP_BATCH_SIZE="${ADFP_BATCH_SIZE:-4}"
+if [[ "${TEACHER_MODEL}" != "Qwen/Qwen2.5-72B-Instruct" || "${STUDENT_MODEL}" != "Qwen/Qwen2.5-7B" ]]; then
+  echo "The paper defense profile requires TEACHER_MODEL=Qwen/Qwen2.5-72B-Instruct and STUDENT_MODEL=Qwen/Qwen2.5-7B" >&2
+  exit 2
+fi
 if [[ "${ATTACK}" == "soda" ]]; then
-  if [[ "${TEACHER_MODEL}" != "Qwen/Qwen2.5-72B-Instruct" || "${STUDENT_MODEL}" != "Qwen/Qwen2.5-7B" ]]; then
-    echo "Defense SODA replay requires TEACHER_MODEL=Qwen/Qwen2.5-72B-Instruct and STUDENT_MODEL=Qwen/Qwen2.5-7B" >&2
-    exit 2
-  fi
   export OUTPUT_ROOT="${OUTPUT_ROOT:-${STORAGE_ROOT}/outputs/defenses/${ATTACK}_b${BUDGET}_seqkd_warmup}"
 else
   export OUTPUT_ROOT="${OUTPUT_ROOT:-${STORAGE_ROOT}/outputs/defenses/${ATTACK}_b${BUDGET}}"
@@ -150,7 +138,7 @@ out_dir = Path(sys.argv[4])
 teacher_model = sys.argv[5]
 proxy_model = sys.argv[6]
 device = sys.argv[7]
-max_new_tokens = int(sys.argv[4])
+max_new_tokens = int(sys.argv[8])
 batch_size = int(sys.argv[9])
 holdout_path = Path(sys.argv[10])
 
@@ -231,7 +219,7 @@ train_file = Path(sys.argv[4])
 base_url = sys.argv[5]
 model = sys.argv[6]
 api_key = sys.argv[7]
-max_new_tokens = int(sys.argv[4])
+max_new_tokens = int(sys.argv[8])
 temperature = float(sys.argv[9])
 top_p = float(sys.argv[10])
 
@@ -290,44 +278,6 @@ PY
 esac
 
 RUNNER_REUSE_ARGS=()
-if [[ "${ATTACK}" == "soda" ]]; then
-  SODA_REUSE_MANIFEST="${DEFENSE_OUT}/soda_seqkd_reuse.json"
-  SODA_REUSE_PREP_ARGS=(
-    --method "${METHOD}"
-    --storage-root "${STORAGE_ROOT}"
-    --output "${SODA_REUSE_MANIFEST}"
-  )
-  if [[ -n "${SODA_SEQKD_LOCAL_ROOT:-}" ]]; then
-    SODA_REUSE_PREP_ARGS+=(--seqkd-local-root "${SODA_SEQKD_LOCAL_ROOT}")
-  fi
-  if [[ -n "${SODA_STUDENT_NEGATIVES_JSONL:-}" ]]; then
-    SODA_REUSE_PREP_ARGS+=(--student-negatives "${SODA_STUDENT_NEGATIVES_JSONL}")
-  fi
-  python3 runs/defense/prepare_soda_seqkd_reuse.py "${SODA_REUSE_PREP_ARGS[@]}"
-  readarray -t SODA_REUSE_VALUES < <(python3 - "${SODA_REUSE_MANIFEST}" <<'PY'
-import json
-import sys
-
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-for key in ("warmup_checkpoint", "defended_transcript", "defense_artifacts", "oracle_manifest", "teacher_query_log", "student_negatives"):
-    print(data[key])
-PY
-  )
-  WARMUP_MODEL="${SODA_REUSE_VALUES[0]}"
-  SODA_REUSED_TRANSCRIPT="${SODA_REUSE_VALUES[1]}"
-  SODA_REUSED_ARTIFACTS="${SODA_REUSE_VALUES[2]}"
-  SODA_REUSED_ORACLE_MANIFEST="${SODA_REUSE_VALUES[3]}"
-  SODA_REUSED_QUERY_LOG="${SODA_REUSE_VALUES[4]}"
-  SODA_STUDENT_NEGATIVES_JSONL="${SODA_REUSE_VALUES[5]}"
-  RUNNER_REUSE_ARGS+=(
-    --reuse-defense-transcript "${SODA_REUSED_TRANSCRIPT}"
-    --reuse-defense-artifacts "${SODA_REUSED_ARTIFACTS}"
-    --reuse-oracle-manifest "${SODA_REUSED_ORACLE_MANIFEST}"
-    --reuse-teacher-query-log "${SODA_REUSED_QUERY_LOG}"
-  )
-elif [[ -z "${WARMUP_MODEL}" ]]; then
-  WARMUP_MODEL="${STUDENT_MODEL}"
-fi
 
 ATTACK_ARGS=(
   --student-endpoint-url "${STUDENT_ENDPOINT_URL}"
@@ -360,7 +310,6 @@ case "${ATTACK}" in
       --soda-max-prompt-length "${SODA_MAX_PROMPT_LENGTH:-1024}"
       --soda-max-grad-norm "${SODA_MAX_GRAD_NORM:-1.0}"
       --soda-nonfinite-gradient-retries "${SODA_NONFINITE_GRADIENT_RETRIES:-3}"
-      --soda-student-negatives-jsonl "${SODA_STUDENT_NEGATIVES_JSONL}"
     )
     ;;
   qedks)
@@ -460,6 +409,5 @@ python3 -m "defenses.${METHOD}.runner" \
   --execution-mode "${DEFENSE_EXECUTION_MODE}" \
   --ads-batch-size "${ADS_BATCH_SIZE}" \
   --adfp-batch-size "${ADFP_BATCH_SIZE}" \
-  "${RUNNER_REUSE_ARGS[@]}" \
   "${METHOD_ARGS[@]}" \
   -- "${ATTACK_ARGS[@]}"

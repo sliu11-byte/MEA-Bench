@@ -165,7 +165,15 @@ def local_corrected_soda_checkpoint(defense):
     }
 
 
-def checkpoint_for(attack, defense, checkpoint_root):
+def checkpoint_for(attack, defense, checkpoint_root, direct_checkpoint=None):
+    if direct_checkpoint is not None:
+        checkpoint = Path(direct_checkpoint).expanduser().resolve()
+        if not _checkpoint_complete(checkpoint):
+            raise ValueError(f"Incomplete local adapter checkpoint: {checkpoint}")
+        config = json.loads((checkpoint / "adapter_config.json").read_text(encoding="utf-8"))
+        if config.get("base_model_name_or_path") != BASE:
+            raise ValueError(f"Unexpected adapter base model: {config}")
+        return checkpoint, {"source": "manifest", "checkpoint": str(checkpoint)}
     if attack == "soda":
         local = local_corrected_soda_checkpoint(defense)
         if local is not None:
@@ -189,6 +197,10 @@ def main():
     parser.add_argument("--prompts-jsonl", required=True)
     parser.add_argument("--checkpoint-root", type=Path,
                         help="Local directory containing mea-<attack>-defenses folders.")
+    parser.add_argument("--defense", choices=DEFENSES,
+                        help="Evaluate one manifest-resolved defense instead of the legacy full bundle.")
+    parser.add_argument("--checkpoint", type=Path,
+                        help="Checkpoint recorded by the selected defense manifest.")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--m1-only", action="store_true",
                         help="Recompute M1 without regenerating held-out answers or BERTScore.")
@@ -199,8 +211,12 @@ def main():
     args = parser.parse_args()
     if args.limit < 0:
         parser.error("--limit must be nonnegative")
-    if args.stage == "students" and (not args.attack or not args.checkpoint_root):
-        parser.error("Student evaluation requires --attack and --checkpoint-root")
+    if args.stage == "students" and not args.attack:
+        parser.error("Student evaluation requires --attack")
+    if args.stage == "students" and args.defense and not args.checkpoint:
+        parser.error("Single-defense evaluation requires --checkpoint")
+    if args.stage == "students" and not args.defense and not args.checkpoint_root:
+        parser.error("Legacy bundle evaluation requires --checkpoint-root")
     output = Path(args.output_root).resolve()
     output.mkdir(parents=True, exist_ok=True)
     prompts = [] if args.m1_only else load_prompts(Path(args.prompts_jsonl))
@@ -245,10 +261,14 @@ def main():
     teacher_acc = json.loads((reference / "teacher" / "m1_acc.json").read_text())["acc"]
     base_acc = json.loads((reference / "base" / "m1_acc.json").read_text())["acc"]
     summary = []
-    for defense in DEFENSES:
+    selected_defenses = (args.defense,) if args.defense else DEFENSES
+    for defense in selected_defenses:
         directory = protocol_dir / defense
         checkpoint, source = checkpoint_for(
-            args.attack, defense, args.checkpoint_root.expanduser().resolve()
+            args.attack,
+            defense,
+            None if args.checkpoint_root is None else args.checkpoint_root.expanduser().resolve(),
+            args.checkpoint if args.defense else None,
         )
         check_protocol(directory / "source.json", source)
         print(f"Evaluating {args.attack}/{defense}", flush=True)
@@ -262,7 +282,7 @@ def main():
             score = bertscore_f1([rows[p["id"]]["text"] for p in prompts],
                                  [teacher[p["id"]]["text"] for p in prompts], "en", "roberta-large", 16, "cuda:0")
             write_json(directory / "m2_bertscore.json", {"bertscore": score, "n": len(prompts), "reference": TEACHER})
-        clean = summary[0] if summary else None
+        clean = summary[0] if summary and summary[0]["defense"] == "clean" else None
         row = {"attack": args.attack, "defense": defense, "acc": acc,
                "teacher_acc": teacher_acc, "base_acc": base_acc,
                "gain_over_base": acc - base_acc,

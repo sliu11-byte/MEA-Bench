@@ -12,6 +12,15 @@ BASE_PACKAGES = [
     "numpy",
     "tqdm",
     "datasets",
+    "huggingface_hub",
+    "httpx",
+    "openai",
+    "scipy",
+    "safetensors",
+    "nltk",
+    "bert_score",
+    "sentence_transformers",
+    "mauve",
     "torch",
     "transformers",
     "accelerate",
@@ -20,6 +29,10 @@ TRL_PACKAGES = ["peft", "trl"]
 VLLM_PACKAGES = ["vllm"]
 PACKAGE_DISTS = {
     "yaml": "PyYAML",
+    "huggingface_hub": "huggingface-hub",
+    "bert_score": "bert-score",
+    "sentence_transformers": "sentence-transformers",
+    "mauve": "mauve-text",
 }
 TARGET_VERSIONS = {
     "transformers": "5.14.1",
@@ -27,6 +40,13 @@ TARGET_VERSIONS = {
     "peft": "0.15.2",
     "accelerate": "1.14.0",
     "datasets": "5.0.1",
+    "huggingface_hub": "1.25.1",
+    "httpx": "0.28.1",
+    "openai": "2.46.0",
+    "safetensors": "0.8.0",
+    "nltk": "3.9.1",
+    "bert_score": "0.3.13",
+    "mauve": "0.4.0",
     "torch": "2.11.0+cu128",
     "vllm": "0.26.0",
 }
@@ -93,15 +113,15 @@ def main() -> int:
 
     if missing:
         print("\nInstall missing packages, for example:", file=sys.stderr)
-        print("  pip install -r attacks/requirements-smoke.txt", file=sys.stderr)
+        print("  pip install -r requirements.txt", file=sys.stderr)
         return 1
 
     if version_mismatches:
-        print("\nVersion mismatches against attacks/requirements-smoke.txt:", file=sys.stderr)
+        print("\nVersion mismatches against requirements.txt:", file=sys.stderr)
         for package, actual, target in version_mismatches:
             print(f"  {package}: installed {actual}, target {target}", file=sys.stderr)
         print("\nInstall the pinned smoke environment, for example:", file=sys.stderr)
-        print("  pip install -r attacks/requirements-smoke.txt", file=sys.stderr)
+        print("  pip install -r requirements.txt", file=sys.stderr)
         return 1
 
     errors = []

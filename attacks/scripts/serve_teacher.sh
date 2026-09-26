@@ -2,11 +2,6 @@
 
 set -euo pipefail
 
-if command -v module >/dev/null 2>&1; then
-  module purge || true
-  command -v module >/dev/null 2>&1 && module load conda/25.7.0 cuda/12.8.1 || true || true
-fi
-if command -v conda >/dev/null 2>&1; then conda activate "${CONDA_ENV:-research}"; fi
 if [[ -n "${CONDA_PREFIX:-}" ]]; then export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"; fi
 
 export OMP_NUM_THREADS="${CPU_THREADS:-8}"
@@ -36,11 +31,11 @@ else
 fi
 cd "${REPO_DIR}"
 
-DEFAULT_STORAGE_ROOT="/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey"
+DEFAULT_STORAGE_ROOT="${REPO_DIR}"
 export STORAGE_ROOT="${STORAGE_ROOT:-${DEFAULT_STORAGE_ROOT}}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a
@@ -64,7 +59,7 @@ VLLM_GPU_MEMORY_UTILIZATION="${VLLM_GPU_MEMORY_UTILIZATION:-0.90}"
 VLLM_MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-8096}"
 VLLM_DTYPE="${VLLM_DTYPE:-bfloat16}"
 VLLM_API_KEY="${VLLM_API_KEY:-EMPTY}"
-ENDPOINT_HOST="${VLLM_ADVERTISE_HOST:-$(hostname -f 2>/dev/null || hostname)}"
+ENDPOINT_HOST="${VLLM_ADVERTISE_HOST:-127.0.0.1}"
 ENDPOINT_URL="http://${ENDPOINT_HOST}:${VLLM_PORT}/v1"
 ENDPOINT_ENV_PATH="${VLLM_ENDPOINT_ENV_PATH:-${STORAGE_ROOT}/outputs/vllm_teacher/teacher_endpoint.env}"
 mkdir -p "$(dirname "${ENDPOINT_ENV_PATH}")"

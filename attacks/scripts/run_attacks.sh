@@ -2,13 +2,6 @@
 
 set -euo pipefail
 
-if command -v module >/dev/null 2>&1; then
-  module purge || true
-  command -v module >/dev/null 2>&1 && module load conda/25.7.0 cuda/12.8.1 || true || true
-fi
-if command -v conda >/dev/null 2>&1; then
-  command -v conda >/dev/null 2>&1 && conda activate "${CONDA_ENV:-research}" || true
-fi
 if [[ -n "${CONDA_PREFIX:-}" ]]; then
   export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
 fi
@@ -30,11 +23,11 @@ else
 fi
 cd "${REPO_DIR}"
 
-DEFAULT_STORAGE_ROOT="/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey"
+DEFAULT_STORAGE_ROOT="${REPO_DIR}"
 export STORAGE_ROOT="${STORAGE_ROOT:-${DEFAULT_STORAGE_ROOT}}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a
@@ -336,6 +329,10 @@ ensure_student_for_soda() {
   if [[ "${ATTACK}" != "soda" ]]; then
     return 0
   fi
+  if [[ "${SODA_PREP_NEEDS_ENDPOINT:-1}" == "0" ]]; then
+    echo "SODA preparation has complete precomputed data; skipping student endpoint health check."
+    return 0
+  fi
   if [[ "${SODA_STUDENT_MODE}" == "local" ]]; then
     rm -f "${STUDENT_ENDPOINT_ENV}"
     start_local_student_for_soda
@@ -429,6 +426,7 @@ METHOD_ARGS=()
 case "${ATTACK}" in
   soda)
     METHOD_ARGS+=(
+      --soda-beta "${SODA_BETA:-0.1}"
       --soda-learning-rate "${SODA_LEARNING_RATE:-5e-6}"
       --soda-epochs "${SODA_EPOCHS:-1.0}"
       --soda-per-device-train-batch-size "${SODA_PER_DEVICE_TRAIN_BATCH_SIZE:-1}"

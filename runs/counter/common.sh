@@ -14,10 +14,6 @@ export RUN_LOG_DIR="${RUN_LOG_DIR:-${REPO_DIR}/logs/${RUN_NAME:-counter}_${RUN_I
 mkdir -p "${RUN_LOG_DIR}"
 echo "Stage logs: ${RUN_LOG_DIR}; stage output is also streamed into this job's main log."
 
-command -v module >/dev/null 2>&1 && module purge || true
-command -v module >/dev/null 2>&1 && module load conda/25.7.0 || true
-command -v module >/dev/null 2>&1 && module load cuda/12.4.1 || true
-command -v conda >/dev/null 2>&1 && conda activate "${CONDA_ENV:-research}" || true
 if [[ -n "${CONDA_PREFIX:-}" ]]; then export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"; fi
 
 export OMP_NUM_THREADS="${CPU_THREADS:-4}"
@@ -50,10 +46,10 @@ case "${METHOD}" in
   *) echo "Counter experiments only cover ginsew, radioactivity, and adfp. Got METHOD=${METHOD}" >&2; exit 2 ;;
 esac
 
-export STORAGE_ROOT="${STORAGE_ROOT:-/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey}"
+export STORAGE_ROOT="${STORAGE_ROOT:-${REPO_DIR}}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a

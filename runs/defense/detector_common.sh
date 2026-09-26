@@ -11,20 +11,16 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "${REPO_DIR}"
 mkdir -p logs
 
-command -v module >/dev/null 2>&1 && module purge || true
-command -v module >/dev/null 2>&1 && module load conda/25.7.0 || true
-command -v module >/dev/null 2>&1 && module load cuda/12.4.1 || true
-command -v conda >/dev/null 2>&1 && conda activate "${CONDA_ENV:-research}" || true
 if [[ -n "${CONDA_PREFIX:-}" ]]; then export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"; fi
 
 export OMP_NUM_THREADS="${CPU_THREADS:-4}"
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export PYTHONUNBUFFERED=1
 
-export STORAGE_ROOT="${STORAGE_ROOT:-/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey}"
+export STORAGE_ROOT="${STORAGE_ROOT:-${REPO_DIR}}"
 
-FULL_RUN_ENV="${FULL_RUN_ENV:-${REPO_DIR}/attacks/configs/full_run_hpg.env}"
-if [[ -f "${FULL_RUN_ENV}" ]]; then
+FULL_RUN_ENV="${FULL_RUN_ENV:-}"
+if [[ -n "${FULL_RUN_ENV}" && -f "${FULL_RUN_ENV}" ]]; then
   set -a
   source "${FULL_RUN_ENV}"
   set +a
@@ -39,7 +35,7 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}/transformers}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME}/hub}"
 mkdir -p "${HF_DATASETS_CACHE}" "${TRANSFORMERS_CACHE}" "${HF_HUB_CACHE}"
 
-export TEACHER_MODEL="${TEACHER_MODEL:-meta-llama/Llama-3.3-70B-Instruct}"
+export TEACHER_MODEL="${TEACHER_MODEL:-Qwen/Qwen2.5-72B-Instruct}"
 export DEVICE="${DEVICE:-cuda}"
 export ATTACK_OUTPUT_ROOT="${ATTACK_OUTPUT_ROOT:-${STORAGE_ROOT}/outputs/attacks_full}"
 export OUTPUT_ROOT="${OUTPUT_ROOT:-${STORAGE_ROOT}/outputs/defenses/detectors_b${BUDGET}}"

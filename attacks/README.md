@@ -91,7 +91,7 @@ Budget tiers are treated as benchmark data tiers, not arbitrary prefixes of `que
 For real attack smoke tests and LoRA/DPO training, install the attack environment dependencies inside the target conda environment:
 
 ```bash
-pip install -r attacks/requirements-smoke.txt
+pip install -r requirements.txt
 python3 attacks/scripts/check_attack_env.py --require-trl --require-vllm --strict-versions
 ```
 

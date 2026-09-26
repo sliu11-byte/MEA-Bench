@@ -25,6 +25,7 @@ class SODAAttacker:
         log_dir = run_dir / "logs"
         student_jsonl = config.soda_student_negatives_jsonl or (train_data_dir / "student_negatives.jsonl")
         preference_jsonl = config.soda_preferences_jsonl or (train_data_dir / "preferences.jsonl")
+        preference_stats_json = preference_jsonl.with_name("preference_stats.json")
         warmup_model = config.warmup_model
         student_request_model = config.student_request_model or config.student_model
 
@@ -38,6 +39,7 @@ class SODAAttacker:
             "student_request_model": student_request_model,
             "student_negatives_jsonl": str(student_jsonl),
             "preferences_jsonl": str(preference_jsonl),
+            "preference_stats_json": str(preference_stats_json),
             "reuse_student_negatives": config.soda_student_negatives_jsonl is not None,
             "reuse_preferences": config.soda_preferences_jsonl is not None,
             "execution_stage": config.execution_stage,
@@ -70,14 +72,19 @@ class SODAAttacker:
         elif config.soda_preferences_jsonl is not None:
             if not preference_jsonl.exists():
                 raise SODAAttackError(f"SODA preferences JSONL does not exist: {preference_jsonl}")
-        elif config.soda_student_negatives_jsonl is not None:
-            if not student_jsonl.exists():
-                raise SODAAttackError(f"SODA student negatives JSONL does not exist: {student_jsonl}")
         else:
+            if config.soda_student_negatives_jsonl is not None and not student_jsonl.exists():
+                raise SODAAttackError(f"SODA student negatives JSONL does not exist: {student_jsonl}")
             if config.student_endpoint_url is None:
-                raise SODAAttackError("SODA requires --student-endpoint-url unless --soda-student-negatives-jsonl or --soda-preferences-jsonl is provided.")
+                raise SODAAttackError(
+                    "SODA requires --student-endpoint-url to generate or complete student negatives "
+                    "unless --soda-preferences-jsonl is provided."
+                )
             if student_request_model is None:
-                raise SODAAttackError("SODA requires --student-request-model or --student-model unless precomputed SODA data is provided.")
+                raise SODAAttackError(
+                    "SODA requires --student-request-model or --student-model to generate or complete "
+                    "student negatives unless --soda-preferences-jsonl is provided."
+                )
 
         warmup = None
         if config.transcript_dir is None and config.warmup_model is None:
@@ -99,16 +106,27 @@ class SODAAttacker:
             if warmup is not None:
                 pass
             elif config.transcript_dir is None:
-                from attacks.methods.stage1_budget_impl.build_teacher_transcript import build_teacher_transcript
+                if config.teacher_transcript_path is not None:
+                    from attacks.methods.stage1_budget_impl.external_transcript import import_external_teacher_transcript
 
-                transcript_result = build_teacher_transcript(
-                    config_path=config.stage1_config_path,
-                    budget=config.budget,
-                    backend_override=config.teacher_backend,
-                    output_dir_override=transcript_root,
-                    dry_run=False,
-                    validate_only=False,
-                )
+                    transcript_result = import_external_teacher_transcript(
+                        config.teacher_transcript_path,
+                        transcript_root,
+                        budget=config.budget,
+                        teacher_model_id=config.teacher_model,
+                        seed=config.seed,
+                    )
+                else:
+                    from attacks.methods.stage1_budget_impl.build_teacher_transcript import build_teacher_transcript
+
+                    transcript_result = build_teacher_transcript(
+                        config_path=config.stage1_config_path,
+                        budget=config.budget,
+                        backend_override=config.teacher_backend,
+                        output_dir_override=transcript_root,
+                        dry_run=False,
+                        validate_only=False,
+                    )
                 transcript_dir = Path(str(transcript_result["bundle_dir"]))
             else:
                 transcript_dir = config.transcript_dir
@@ -229,8 +247,7 @@ class SODAAttacker:
 
         commands = {}
         if config.execution_stage != "train" and config.soda_preferences_jsonl is None:
-            if config.soda_student_negatives_jsonl is None:
-                commands["collect_student_negatives"] = collect_cmd
+            commands["collect_student_negatives"] = collect_cmd
             commands["build_preferences"] = build_cmd
         if config.execution_stage != "prepare":
             commands["train_dpo"] = train_cmd
@@ -254,6 +271,7 @@ class SODAAttacker:
             {
                 "student_negatives_jsonl": str(student_jsonl),
                 "preference_jsonl": str(preference_jsonl),
+                "preference_stats_json": str(preference_stats_json) if preference_stats_json.exists() else None,
                 "checkpoint_dir": str(checkpoint_dir) if config.execution_stage != "prepare" else None,
                 "training_safety_json": str(checkpoint_dir / "training_safety.json") if config.execution_stage != "prepare" else None,
             }

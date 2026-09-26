@@ -1,17 +1,31 @@
 # Attack runs
 
-Attack experiments are launched directly through `attacks/scripts/run_attacks.sh`.
-Select one method with `ATTACK_INDEX` or provide a space-separated `ATTACKS` list.
+Use the portable top-level runner for one method and budget:
 
 ```bash
-STORAGE_ROOT=/path/to/storage \
-ATTACKS="seqkd lord soda qedks model_leeching gad" \
-bash attacks/scripts/run_attacks.sh
+bash runs/run_attack.sh --attack seqkd --budget 1000 --profile paper
 ```
 
-The default query pools are benchmark datasets hosted on Hugging Face. Generated
-transcripts, checkpoints, and manifests stay under `STORAGE_ROOT`; this snapshot
-does not upload run artifacts.
+This wrapper validates the paper profile and delegates to the retained
+`attacks/scripts/run_attacks.sh` implementation. The default query pools are
+benchmark datasets hosted on Hugging Face. Generated transcripts, checkpoints,
+and manifests stay local; this snapshot does not upload run artifacts.
 
-For staged execution, use `prepare_attack_data.sh`, `train_prepared_attack.sh`,
-`serve_teacher.sh`, and `serve_student.sh` directly.
+The scripts under `attacks/scripts/` remain internal controls for staged or
+service-separated execution. They are useful when an infrastructure operator
+needs separate endpoint and training allocations, but they are not the public
+reproduction interface.
+
+If a SODA run already produced `student_negatives.jsonl`, reuse it instead of
+querying the student again:
+
+```bash
+ATTACK=soda \
+SHARED_TRANSCRIPT_DIR=/path/to/shared_transcript \
+SODA_STUDENT_NEGATIVES_JSONL=/path/to/student_negatives.jsonl \
+bash attacks/scripts/prepare_attack_data.sh
+```
+
+The preparation script compares prompt IDs. Complete negatives skip the student
+endpoint; incomplete negatives resume only the missing records. Empty teacher or
+student responses are excluded and recorded in `preference_stats.json`.

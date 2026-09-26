@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,11 +13,13 @@ from defenses.core.detector.commands import run_detector_command
 from defenses.core.generator.attack import run_attack_process
 from defenses.core.generator.result import GeneratorResult
 from defenses.core.io_utils import ensure_dir, write_jsonl
-from defenses.core.process_logging import run_logged_command, stage_log_path
+from defenses.core.generator.oracle import wait_for_oracle
+from defenses.core.process_logging import run_logged_command, stage_log_path, start_logged_process
 from defenses.core.runner.online import (
     DETECTOR_FACTORIES,
     DetectorFactory,
     default_output_dir,
+    find_free_port,
     make_run_id,
     parse_common_args,
     repo_root_from_here,
@@ -27,6 +30,173 @@ from defenses.core.runner.result import DefenseRunResult
 
 OFFLINE_TRANSCRIPT_ATTACKS = {"seqkd", "lord", "gad", "soda"}
 OFFLINE_GENERATOR_DEFENSES = {"clean", "ginsew", "radioactivity", "adfp", "ads", "trace_rewriting", "doge"}
+
+
+def _start_soda_student(
+    *, repo_root: Path, checkpoint: Path, student_model: str, output_dir: Path, timeout: float
+) -> tuple[subprocess.Popen, str, str]:
+    served_model = "soda-seqkd-initialization"
+    model = checkpoint
+    lora_args: list[str] = []
+    adapter_config = checkpoint / "adapter_config.json"
+    if adapter_config.is_file():
+        payload = json.loads(adapter_config.read_text(encoding="utf-8"))
+        base_model = payload.get("base_model_name_or_path") or student_model
+        model = Path(str(base_model))
+        lora_args = ["--enable-lora", "--lora-modules", f"{served_model}={checkpoint}"]
+
+    host = "127.0.0.1"
+    port = find_free_port(host)
+    base_url = f"http://{host}:{port}/v1"
+    command = [
+        sys.executable,
+        "-m",
+        "vllm.entrypoints.openai.api_server",
+        "--model",
+        str(model),
+        "--served-model-name",
+        served_model,
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--tensor-parallel-size",
+        os.environ.get("SODA_STUDENT_TENSOR_PARALLEL_SIZE", "1"),
+        "--gpu-memory-utilization",
+        os.environ.get("SODA_STUDENT_GPU_MEMORY_UTILIZATION", "0.85"),
+        "--max-model-len",
+        os.environ.get("SODA_STUDENT_MAX_MODEL_LEN", "4096"),
+        "--dtype",
+        os.environ.get("SODA_STUDENT_DTYPE", "bfloat16"),
+        *lora_args,
+    ]
+    process = start_logged_process(
+        command,
+        cwd=repo_root,
+        log_path=stage_log_path(output_dir / "soda_student_server.log"),
+        env={"CUDA_VISIBLE_DEVICES": os.environ.get("SODA_STUDENT_CUDA_VISIBLE_DEVICES", "0")},
+    )
+    try:
+        wait_for_oracle(base_url, process, timeout=timeout)
+    except BaseException:
+        process.terminate()
+        process.wait(timeout=20)
+        raise
+    return process, base_url, served_model
+
+
+def _stop_process(process: subprocess.Popen) -> None:
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=20)
+    thread = getattr(process, "log_thread", None)
+    if thread is not None:
+        thread.join(timeout=20)
+
+
+def _run_soda_with_prerequisites(
+    *, repo_root: Path, args: argparse.Namespace, attack_dir: Path, transcript_path: Path,
+    attack_extra_args: Optional[Iterable[str]], defense: str,
+) -> dict:
+    extra = list(attack_extra_args or ())
+    seqkd = run_attack_process(
+        repo_root=repo_root,
+        attack="seqkd",
+        budget=args.budget,
+        teacher_base_url=None,
+        served_model_name=f"offline-defended-{defense}",
+        teacher_model=args.teacher_model,
+        student_model=args.student_model,
+        output_dir=attack_dir,
+        query_pool=args.query_pool,
+        query_ordering=args.query_ordering,
+        teacher_mode=args.teacher_mode,
+        teacher_temperature=args.teacher_temperature,
+        teacher_top_p=args.teacher_top_p,
+        teacher_max_tokens=args.teacher_max_tokens,
+        stage1_config=args.stage1_config,
+        extra_args=extra,
+        teacher_transcript_path=transcript_path,
+    )
+    checkpoint_value = seqkd.get("checkpoint_path")
+    if not checkpoint_value:
+        raise RuntimeError("automatic SODA prerequisite did not produce a SeqKD checkpoint")
+    checkpoint = Path(checkpoint_value).resolve()
+
+    process, student_url, request_model = _start_soda_student(
+        repo_root=repo_root,
+        checkpoint=checkpoint,
+        student_model=str(args.student_model),
+        output_dir=attack_dir,
+        timeout=float(args.startup_timeout),
+    )
+    try:
+        run_attack_process(
+            repo_root=repo_root,
+            attack="soda",
+            budget=args.budget,
+            teacher_base_url=None,
+            served_model_name=f"offline-defended-{defense}",
+            teacher_model=args.teacher_model,
+            student_model=args.student_model,
+            output_dir=attack_dir,
+            query_pool=args.query_pool,
+            query_ordering=args.query_ordering,
+            teacher_mode=args.teacher_mode,
+            teacher_temperature=args.teacher_temperature,
+            teacher_top_p=args.teacher_top_p,
+            teacher_max_tokens=args.teacher_max_tokens,
+            stage1_config=args.stage1_config,
+            extra_args=[
+                *extra,
+                "--warmup-model", str(checkpoint),
+                "--student-endpoint-url", student_url,
+                "--student-request-model", request_model,
+                "--execution-stage", "prepare",
+            ],
+            teacher_transcript_path=transcript_path,
+        )
+    finally:
+        _stop_process(process)
+
+    manifests = sorted(
+        (attack_dir / "soda").glob("*/prepare_manifest.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not manifests:
+        raise RuntimeError("automatic SODA preparation did not write prepare_manifest.json")
+    prepared_run = manifests[0].parent
+    result = run_attack_process(
+        repo_root=repo_root,
+        attack="soda",
+        budget=args.budget,
+        teacher_base_url=None,
+        served_model_name=f"offline-defended-{defense}",
+        teacher_model=args.teacher_model,
+        student_model=args.student_model,
+        output_dir=attack_dir,
+        query_pool=args.query_pool,
+        query_ordering=args.query_ordering,
+        teacher_mode=args.teacher_mode,
+        teacher_temperature=args.teacher_temperature,
+        teacher_top_p=args.teacher_top_p,
+        teacher_max_tokens=args.teacher_max_tokens,
+        stage1_config=args.stage1_config,
+        extra_args=[
+            *extra,
+            "--warmup-model", str(checkpoint),
+            "--execution-stage", "train",
+            "--prepared-run-dir", str(prepared_run),
+        ],
+        teacher_transcript_path=transcript_path,
+    )
+    result["prerequisites"] = {"seqkd": seqkd, "prepared_run": str(prepared_run)}
+    return result
 
 
 def parse_runner_args(defense: str, argv: Optional[list[str]] = None) -> tuple[argparse.Namespace, list[str]]:
@@ -316,26 +486,36 @@ def run_offline_batch_defense(
         oracle_manifest = oracle_dir / "defense_manifest.json"
         artifacts_dir = oracle_dir / "artifacts"
 
-    attack_payload = run_attack_process(
-        repo_root=repo_root,
-        attack=args.attack,
-        budget=args.budget,
-        teacher_base_url=None,
-        served_model_name=f"offline-defended-{defense}",
-        teacher_model=args.teacher_model,
-        student_model=args.student_model,
-        output_dir=attack_dir,
-        query_pool=args.query_pool,
-        query_ordering=args.query_ordering,
-        teacher_mode=args.teacher_mode,
-        teacher_temperature=args.teacher_temperature,
-        teacher_top_p=args.teacher_top_p,
-        teacher_max_tokens=args.teacher_max_tokens,
-        stage1_config=args.stage1_config,
-        dry_run=args.dry_run,
-        extra_args=attack_extra_args,
-        teacher_transcript_path=transcript_path,
-    )
+    if args.attack == "soda" and not args.dry_run and not replayed:
+        attack_payload = _run_soda_with_prerequisites(
+            repo_root=repo_root,
+            args=args,
+            attack_dir=attack_dir,
+            transcript_path=transcript_path,
+            attack_extra_args=attack_extra_args,
+            defense=defense,
+        )
+    else:
+        attack_payload = run_attack_process(
+            repo_root=repo_root,
+            attack=args.attack,
+            budget=args.budget,
+            teacher_base_url=None,
+            served_model_name=f"offline-defended-{defense}",
+            teacher_model=args.teacher_model,
+            student_model=args.student_model,
+            output_dir=attack_dir,
+            query_pool=args.query_pool,
+            query_ordering=args.query_ordering,
+            teacher_mode=args.teacher_mode,
+            teacher_temperature=args.teacher_temperature,
+            teacher_top_p=args.teacher_top_p,
+            teacher_max_tokens=args.teacher_max_tokens,
+            stage1_config=args.stage1_config,
+            dry_run=args.dry_run,
+            extra_args=attack_extra_args,
+            teacher_transcript_path=transcript_path,
+        )
 
     attack_manifest = Path(attack_payload["manifest_path"]) if attack_payload.get("manifest_path") else None
     checkpoint = Path(attack_payload["checkpoint_path"]) if attack_payload.get("checkpoint_path") else None

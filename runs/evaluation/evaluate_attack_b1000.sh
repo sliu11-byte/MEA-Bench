@@ -13,10 +13,7 @@ done
 cd "${REPO_DIR}"
 mkdir -p logs
 
-command -v module >/dev/null 2>&1 && module purge || true
-command -v module >/dev/null 2>&1 && module load conda/25.7.0 cuda/12.8.1 || true
-command -v conda >/dev/null 2>&1 && conda activate "${CONDA_ENV:-research}" || true
-export STORAGE_ROOT="${STORAGE_ROOT:-/path/to/storage/${USER}/A-Benchmark-for-Model-distillation-survey}"
+export STORAGE_ROOT="${STORAGE_ROOT:-${REPO_DIR}}"
 export HF_HOME="${HF_HOME:-${STORAGE_ROOT}/cache/huggingface}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME}/hub}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-${HF_HOME}/datasets}"
