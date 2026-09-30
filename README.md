@@ -603,3 +603,12 @@ outputs/
 cache/
 logs/
 ```
+
+## License
+
+Original MEA-Bench code and documentation are licensed under the
+[MIT License](LICENSE). Copyright (c) 2026 MEA-Bench contributors.
+
+Third-party code, dependencies, datasets, and model weights remain subject to
+their respective upstream licenses and terms; the MIT License does not relicense
+those materials. Preserve applicable upstream copyright and license notices.
