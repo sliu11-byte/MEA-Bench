@@ -17,7 +17,7 @@ Required:
 
 Options:
   --profile NAME           Benchmark profile (default: paper)
-  --query-pool PATH|auto   Query-pool file or anonymous HF source (default: auto)
+  --query-pool PATH|auto   Query-pool file or Hugging Face source (default: auto)
   --query-ordering PATH    Optional deterministic ordering file
   --teacher-endpoint URL   OpenAI-compatible teacher endpoint
   --student-endpoint URL   OpenAI-compatible student endpoint (used by SODA)

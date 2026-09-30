@@ -1,4 +1,4 @@
-# A Benchmark for Model Extraction Attacks
+# MEA-Bench: A Benchmark for Model Extraction Attacks
 
 This repository provides a unified benchmark for model extraction attacks,
 defenses, adaptive attacks, and evaluation. The public interface is organized
@@ -10,6 +10,21 @@ The four portable entry points below validate their public arguments and then
 dispatch to the method implementations. Slurm resource wrappers are intentionally
 excluded. Method-owned manifests remain authoritative for resume behavior and
 artifact provenance.
+
+## Paper and Authors
+
+**Do Defenses Against LLM Extraction Work Across Attacks? A Lifecycle Benchmark of Black-Box Model Extraction**
+
+Shuze Liu (Florida State University), Kaixiang Zhao (Brigham Young University),
+Runyang Xu (University of Michigan, Ann Arbor), Jingzhi Chen (State University
+of New York at Buffalo), Nathan Wu (Wake Forest University), Yu Wang (University
+of Georgia), and Yushun Dong (Florida State University).
+
+Paper source: https://github.com/sliu11-byte/MEA_benchmark_arXiv
+
+This repository provides the implementations and reproduction interface for the
+paper. Query pools are hosted under the authors' Hugging Face project:
+https://huggingface.co/datasets/watermarkproject/lord-mea-benchmark
 
 ## Repository Layout
 
@@ -160,7 +175,7 @@ hf auth login
 
 On a non-interactive machine, set `HF_TOKEN` instead. The token is read by the
 Hugging Face libraries and must never be written into a manifest, script, or
-published repository. The anonymous query-pool dataset itself is public.
+published repository. The query-pool dataset itself is public.
 
 ### Models Used in the Paper
 
@@ -520,7 +535,7 @@ that path rather than selecting a similarly named historical run.
 The extraction query pools are published at:
 
 ```text
-https://huggingface.co/datasets/anonymous-mea-benchmark/mea-query-pools
+https://huggingface.co/datasets/watermarkproject/lord-mea-benchmark
 ```
 
 `--query-pool auto` selects the exact file for the requested budget and caches it

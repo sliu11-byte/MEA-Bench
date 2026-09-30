@@ -25,7 +25,7 @@
   "max_train_budget": 10000,
   "num_records": 3000,
   "prompts_output": "evaluation/data/heldout/heldout_prompts.jsonl",
-  "query_pool": "hf://anonymous-mea-benchmark/mea-query-pools/query_pool_100000.json",
+  "query_pool": "hf://watermarkproject/lord-mea-benchmark/query_pool_100000.json",
   "query_pool_meta": {
     "banks": {
       "ARC": 750,

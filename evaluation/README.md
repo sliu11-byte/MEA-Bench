@@ -47,7 +47,7 @@ export STORAGE_ROOT=${STORAGE_ROOT:-/path/to/storage/$USER/A-Benchmark-for-Model
 python3 -m evaluation.scripts.build_heldout_queries
 ```
 
-By default this reads `hf://anonymous-mea-benchmark/mea-query-pools/query_pool_100000.json`, skips the maximum attack training budget of 10000 queries, and selects complete 1000-query blocks 10, 11, and 12. Set `MEA_QUERY_POOL_DATASET` to override the dataset ID. When `STORAGE_ROOT` is set, the output defaults to `${STORAGE_ROOT}/outputs/heldout_queries/heldout_prompts.jsonl` and the downloaded query-pool cache goes under `${STORAGE_ROOT}/cache/`; otherwise it falls back to repo-local `outputs/heldout_queries` and `.cache/`. The output `heldout_prompts.jsonl` is therefore disjoint from the benchmark attack budgets 100/1000/10000 while preserving the query-pool bank mix. The script also writes `heldout_manifest.json` with block ids, source hashes, and bank counts.
+By default this reads `hf://watermarkproject/lord-mea-benchmark/query_pool_100000.json`, skips the maximum attack training budget of 10000 queries, and selects complete 1000-query blocks 10, 11, and 12. Set `MEA_QUERY_POOL_DATASET` to override the dataset ID. When `STORAGE_ROOT` is set, the output defaults to `${STORAGE_ROOT}/outputs/heldout_queries/heldout_prompts.jsonl` and the downloaded query-pool cache goes under `${STORAGE_ROOT}/cache/`; otherwise it falls back to repo-local `outputs/heldout_queries` and `.cache/`. The output `heldout_prompts.jsonl` is therefore disjoint from the benchmark attack budgets 100/1000/10000 while preserving the query-pool bank mix. The script also writes `heldout_manifest.json` with block ids, source hashes, and bank counts.
 
 Generate teacher answers for those prompts directly on allocated GPUs:
 

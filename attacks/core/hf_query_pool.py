@@ -12,7 +12,7 @@ from .manifest import stable_hash, write_json
 
 DEFAULT_DATASET_ID = os.environ.get(
     "MEA_QUERY_POOL_DATASET",
-    "anonymous-mea-benchmark/mea-query-pools",
+    "watermarkproject/lord-mea-benchmark",
 )
 DEFAULT_QUERY_POOL_FILE = "query_pool_10000.json"
 DEFAULT_HF_QUERY_POOL = f"hf://{DEFAULT_DATASET_ID}/{DEFAULT_QUERY_POOL_FILE}"

@@ -3,7 +3,7 @@
 #
 # Usage:
 #   bash runs/sync_hpg_logs.sh [--dry-run]
-#   bash runs/sync_hpg_logs.sh --host hpg.rc.ufl.edu --user anonymous_user
+#   bash runs/sync_hpg_logs.sh --host hpg.rc.ufl.edu --user YOUR_USERNAME --remote-repo /path/to/remote/repository
 #   bash runs/sync_hpg_logs.sh --destination /path/to/local/logs
 #
 # Environment overrides:
@@ -15,8 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 HPG_HOST="${HPG_HOST:-hpg.rc.ufl.edu}"
-HPG_USER="${HPG_USER:-anonymous_user}"
-HPG_REPO_DIR="${HPG_REPO_DIR:-/home/anonymous_user/project/A-Benchmark-for-Model-distillation-survey}"
+HPG_USER="${HPG_USER:-}"
+HPG_REPO_DIR="${HPG_REPO_DIR:-}"
 LOCAL_LOG_DIR="${LOCAL_LOG_DIR:-${REPO_DIR}/logs}"
 DRY_RUN=0
 
@@ -35,6 +35,11 @@ while (( $# > 0 )); do
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
+
+if [[ -z "${HPG_USER}" || -z "${HPG_REPO_DIR}" ]]; then
+  echo "Set --user and --remote-repo (or HPG_USER and HPG_REPO_DIR)." >&2
+  exit 2
+fi
 
 if ! command -v rsync >/dev/null 2>&1; then
   echo "rsync is required in WSL. Install it with: sudo apt install rsync" >&2

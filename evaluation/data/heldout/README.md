@@ -12,7 +12,7 @@ The sorted prompt-ID hash matches completed teacher job 42187817:
 ID equality alone does not establish prompt-text equality with the cluster copy;
 attack evaluation checks every prompt text against its teacher reference.
 
-Source data: https://huggingface.co/datasets/anonymous-mea-benchmark/mea-query-pools
+Source data: https://huggingface.co/datasets/watermarkproject/lord-mea-benchmark
 This redistribution does not override the original source datasets' terms.
 Per-row bank/source/split fields preserve source attribution.
 

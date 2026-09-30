@@ -72,14 +72,14 @@ Method-specific parameters use method prefixes, for example `--soda-beta`, `--qe
 
 ## Query Pool Source
 
-The default Stage-1 query pool comes from the Hugging Face dataset `anonymous-mea-benchmark/mea-query-pools`. When `--query-pool auto` is used, the CLI selects the published tier for the requested budget. Override it with `MEA_QUERY_POOL_DATASET` when needed:
+The default Stage-1 query pool comes from the Hugging Face dataset `watermarkproject/lord-mea-benchmark`. When `--query-pool auto` is used, the CLI selects the published tier for the requested budget. Override it with `MEA_QUERY_POOL_DATASET` when needed:
 
 ```text
-hf://anonymous-mea-benchmark/mea-query-pools/query_pool_100.json
-hf://anonymous-mea-benchmark/mea-query-pools/query_pool_1000.json
-hf://anonymous-mea-benchmark/mea-query-pools/query_pool_10000.json
-hf://anonymous-mea-benchmark/mea-query-pools/query_pool_50000.json
-hf://anonymous-mea-benchmark/mea-query-pools/query_pool_100000.json
+hf://watermarkproject/lord-mea-benchmark/query_pool_100.json
+hf://watermarkproject/lord-mea-benchmark/query_pool_1000.json
+hf://watermarkproject/lord-mea-benchmark/query_pool_10000.json
+hf://watermarkproject/lord-mea-benchmark/query_pool_50000.json
+hf://watermarkproject/lord-mea-benchmark/query_pool_100000.json
 ```
 
 `attacks/scripts/run_attack.py` and `attacks/scripts/build_shared_teacher_transcript.py` resolve `auto` and `hf://...` specs before constructing the attacker config. On first use it tries `huggingface_hub` and falls back to direct HTTPS download, then stores the file under `.cache/mea_benchmark/hf_datasets/`. With `--query-ordering auto`, it also writes a deterministic ordering JSON for the cached pool. This means the current attack pipeline no longer depends on `stage1-LoRD-SeqKD/data/query_pool.json` or `query_ordering.json` as default inputs.
